@@ -2,7 +2,7 @@ const container = require('./container');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function mapMatchToMetaPreview(match) {
+function mapMatchToMetaPreview(match, config = {}) {
   const titleStr = match.title || 'Live Match';
   const safeTitle = encodeURIComponent(Array.from(titleStr).slice(0, 30).join(''));
   
@@ -90,7 +90,11 @@ function mapMatchToMetaPreview(match) {
   
   if (match.date && !isNaN(parseInt(match.date)) && parseInt(match.date) > 0) {
      const dateObj = new Date(parseInt(match.date));
-     timeString = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+     const options = { hour: '2-digit', minute: '2-digit' };
+     if (config && config.timezone) {
+       options.timeZone = config.timezone;
+     }
+     timeString = dateObj.toLocaleTimeString('en-US', options);
      
      const now = Date.now();
      const diff = dateObj.getTime() - now;
@@ -135,10 +139,12 @@ function mapMatchToMetaPreview(match) {
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
-async function handleCatalog(type, id, extra) {
+async function handleCatalog(type, id, extra, config) {
   if (type !== 'tv' || !id.startsWith('nuvio_sports_')) {
     return { metas: [] };
   }
+  
+  const conf = config || (extra && extra.config) || {};
 
   const categoryMatch = id.replace('nuvio_sports_', '');
   
@@ -148,8 +154,8 @@ async function handleCatalog(type, id, extra) {
   
   let filteredMatches = matches;
   
-  if (extra && extra.config && extra.config.sports && extra.config.sports !== 'all') {
-    const allowedSports = extra.config.sports.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  if (conf.sports && conf.sports !== 'all') {
+    const allowedSports = conf.sports.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
     // Don't filter out networks (24/7 TV) since they aren't tied to a specific sport
     filteredMatches = filteredMatches.filter(m => m.category === 'networks' || allowedSports.includes(m.category) || allowedSports.includes('other'));
   }
@@ -163,8 +169,8 @@ async function handleCatalog(type, id, extra) {
       return m.popular === '0' && kickoff > now;
     });
   } else if (categoryMatch === 'teams') {
-    if (extra && extra.config && extra.config.teams) {
-      const favoriteTeams = extra.config.teams.toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
+    if (conf.teams) {
+      const favoriteTeams = conf.teams.toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
       filteredMatches = matches.filter(m => {
         const titleWords = m.title.toLowerCase();
         return favoriteTeams.some(team => titleWords.includes(team));
@@ -202,7 +208,7 @@ async function handleCatalog(type, id, extra) {
     return 0;
   });
 
-  let metas = filteredMatches.map(mapMatchToMetaPreview);
+  let metas = filteredMatches.map(m => mapMatchToMetaPreview(m, conf));
 
   if (extra && extra.search) {
     const q = extra.search.toLowerCase();
@@ -216,7 +222,7 @@ async function handleCatalog(type, id, extra) {
   return { metas };
 }
 
-async function handleMeta(type, id) {
+async function handleMeta(type, id, config) {
   if (type !== 'tv' || !id.startsWith('nuvio_sport_')) {
     return { meta: null };
   }
@@ -230,7 +236,7 @@ async function handleMeta(type, id) {
     return { meta: null };
   }
 
-  return { meta: mapMatchToMetaPreview(match) };
+  return { meta: mapMatchToMetaPreview(match, config || {}) };
 }
 
 module.exports = {

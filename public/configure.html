@@ -250,6 +250,15 @@
     </div>
 
     <div class="section">
+      <h3>Localization</h3>
+      <div class="input-group">
+        <label>Select your local timezone (Match times will be displayed in this timezone)</label>
+        <select id="timezone" style="width: 100%; padding: 14px 16px; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--card-border); border-radius: 12px; color: #fff; font-size: 15px; box-sizing: border-box; font-family: 'Inter', sans-serif; transition: all 0.2s; outline: none; cursor: pointer;">
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
       <h3>Priority Tracking</h3>
       <div class="input-group">
         <label>Favorite Teams (Comma Separated)</label>
@@ -283,16 +292,37 @@
     const input = document.getElementById('teams');
     const checkboxes = document.querySelectorAll('#sportsGrid input[type="checkbox"]');
     const sourceCheckboxes = document.querySelectorAll('#sourcesGrid input[type="checkbox"]');
+    const timezoneSelect = document.getElementById('timezone');
+
+    // Populate timezones
+    try {
+      const timezones = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : [Intl.DateTimeFormat().resolvedOptions().timeZone];
+      const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      
+      timezones.forEach(tz => {
+        const option = document.createElement('option');
+        option.value = tz;
+        option.textContent = tz;
+        option.style.background = '#1c1c1e';
+        option.style.color = '#fff';
+        if (tz === localTz) option.selected = true;
+        timezoneSelect.appendChild(option);
+      });
+    } catch(e) {
+      console.warn("Timezone API not fully supported.", e);
+    }
 
     function updateLink() {
       const teams = input.value.trim();
       const selectedSports = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
       const selectedSources = Array.from(sourceCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+      const tz = timezoneSelect.value;
 
       let manifestUrl = window.location.origin + '/manifest.json';
 
       const config = {};
       if (teams) config.teams = teams;
+      if (tz) config.timezone = tz;
 
       if (selectedSports.length < checkboxes.length) {
         config.sports = selectedSports.join(',');
@@ -314,6 +344,7 @@
     }
 
     input.addEventListener('input', updateLink);
+    timezoneSelect.addEventListener('change', updateLink);
     [...checkboxes, ...sourceCheckboxes].forEach(cb => {
       cb.addEventListener('change', (e) => {
         const label = e.target.closest('.checkbox-label');
