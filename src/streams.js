@@ -229,12 +229,24 @@ async function handleStream(type, id, config) {
     
     // If it's a direct m3u8 stream and not routed through our proxy, mark it notWebReady
     if (s.url && s.url.includes('.m3u8') && !s.url.includes('/api/hls')) {
-      s.behaviorHints.notWebReady = true;
-      if (providerName === 'Streamed.pk') {
+      if (providerName !== 'Direct IPTV') {
+        s.behaviorHints.notWebReady = true;
+      }
+      
+      let referer = '';
+      if (providerName === 'Streamed.pk') referer = 'https://embed.st/';
+      else if (providerName === 'WatchFooty') referer = 'https://watchfooty.st/';
+      else if (providerName === 'CDNLiveTV') referer = 'https://cdnlivetv.tv/';
+      else if (providerName === 'Streamic') referer = 'https://streamic.st/';
+      else if (providerName === 'PPV Domains' || providerName === 'BinTV') referer = 'https://ppv.st/';
+      else if (providerName === 'StreamSports99' || providerName === 'StreamSports') referer = 'https://cdnlivetv.is/';
+      else if (providerName === 'SportyHunter') referer = 'https://sportyhunter.xyz/';
+      
+      if (referer) {
         s.behaviorHints.proxyHeaders = {
           request: {
-            "Referer": "https://embed.st/",
-            "Origin": "https://embed.st"
+            "Referer": referer,
+            "Origin": referer
           }
         };
       }
