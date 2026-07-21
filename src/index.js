@@ -21,7 +21,8 @@ const path = require('path');
 
 const { builder } = require('./manifest');
 const { handleCatalog, handleMeta } = require('./catalog');
-const { handleStream } = require('./streams');
+const { handleStream, handleStreamProgressive } = require('./streams');
+
 const { PORT, BASE_URL } = require('./config');
 const container = require('./container');
 
@@ -91,6 +92,87 @@ app.use('/api', createProxyMiddleware({
     }
   }
 }));
+
+// ─── Progressive Stream Routes ─────────────────────────────────────────────────
+// Must be registered BEFORE the URL-rewrite middleware and SDK router so that
+// they intercept stream requests and handle them with NDJSON chunked streaming.
+//
+// As each provider resolves streams, we immediately write a line of JSON to the
+// response: {"streams":[...all so far]}\n  — so Nuvio sees streams appear
+// one-by-one instead of waiting for all providers to finish.
+
+function _rewriteStreamUrls(streams, dynamicBaseUrl) {
+  return streams.map(s => {
+    const copy = Object.assign({}, s);
+    if (copy.url) {
+      if (copy.url.startsWith('/api/hls')) copy.url = dynamicBaseUrl + copy.url;
+      else if (BASE_URL && copy.url.startsWith(BASE_URL)) copy.url = copy.url.replace(BASE_URL, dynamicBaseUrl);
+    }
+    if (copy.externalUrl) {
+      if (copy.externalUrl.startsWith('/watch')) copy.externalUrl = dynamicBaseUrl + copy.externalUrl;
+      else if (BASE_URL && copy.externalUrl.startsWith(BASE_URL)) copy.externalUrl = copy.externalUrl.replace(BASE_URL, dynamicBaseUrl);
+    }
+    return copy;
+  });
+}
+
+async function _progressiveStreamHandler(req, res, rawId, config) {
+  const host = req.get('host');
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  const dynamicBaseUrl = proto + '://' + host;
+
+  if (!rawId.startsWith('nuvio_sport_')) {
+    // Not our stream; let the SDK handle it
+    return res.status(404).json({ streams: [] });
+  }
+
+  // NDJSON chunked streaming: each chunk is a complete {streams:[...]} JSON line.
+  // Nuvio parses each line as it arrives and updates the stream list progressively.
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Transfer-Encoding', 'chunked');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Cache-Control', 'no-cache, no-store');
+
+  let lastCount = 0;
+
+  try {
+    await handleStreamProgressive('tv', rawId, config, async (streams) => {
+      if (streams.length <= lastCount) return; // nothing new, skip
+      lastCount = streams.length;
+      const rewritten = _rewriteStreamUrls(streams, dynamicBaseUrl);
+      const line = JSON.stringify({
+        streams: rewritten,
+        cacheMaxAge: 0,
+        staleRevalidate: 0,
+        staleError: 0
+      });
+      res.write(line + '\n');
+    });
+  } catch (err) {
+    console.error('[progressive] Unhandled error:', err.message);
+  }
+
+  res.end();
+}
+
+// Without config: /stream/tv/nuvio_sport_xyz.json
+app.get('/stream/tv/:rawId', (req, res) => {
+  const rawId = (req.params.rawId || '').replace(/\.json$/, '');
+  _progressiveStreamHandler(req, res, rawId, {});
+});
+
+// With config prefix: /{encodedConfig}/stream/tv/nuvio_sport_xyz.json
+app.get('/:encodedConfig/stream/tv/:rawId', (req, res, next) => {
+  const raw = req.params.encodedConfig || '';
+  // Only handle if this looks like a JSON config (URL-encoded '{' = %7B)
+  if (!raw.startsWith('%7B') && !raw.startsWith('{')) return next();
+  let config = {};
+  try { config = JSON.parse(decodeURIComponent(raw)); } catch (e) { return next(); }
+  const rawId = (req.params.rawId || '').replace(/\.json$/, '');
+  _progressiveStreamHandler(req, res, rawId, config);
+});
+
 
 // ─── Dynamic URL Rewrite Middleware ─────────────────────────────────────────────
 // The Stremio addon SDK processes streams and returns JSON. We intercept it here

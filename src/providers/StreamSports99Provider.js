@@ -113,8 +113,10 @@ class StreamSports99Provider extends BaseProvider {
       }
 
       if (item && item.channels && Array.isArray(item.channels)) {
-        for (const [idx, ch] of item.channels.entries()) {
-          if (ch.url) {
+        // Resolve all channels in parallel to avoid N×5s serial wait
+        const channelResults = await Promise.allSettled(
+          item.channels.map(async (ch, idx) => {
+            if (!ch.url) return null;
             try {
               // Fetch the player HTML to extract the actual m3u8
               const playerRes = await fetch(ch.url, {
@@ -124,7 +126,7 @@ class StreamSports99Provider extends BaseProvider {
                 },
                 signal: AbortSignal.timeout(5000)
               });
-              
+
               if (playerRes.ok) {
                 const html = await playerRes.text();
                 const decoderMatch = html.match(/function\s+([a-zA-Z0-9_]+)\s*\([a-zA-Z0-9_]+\)\s*\{.+?atob/);
@@ -132,7 +134,7 @@ class StreamSports99Provider extends BaseProvider {
                   const decoderName = decoderMatch[1];
                   const concatRegex = new RegExp(`var\\s+([a-zA-Z0-9_]+)\\s*=\\s*${decoderName}\\([^;]+;`);
                   const concatMatch = html.match(concatRegex);
-                  
+
                   if (concatMatch) {
                     const varRegex = new RegExp(`${decoderName}\\(([a-zA-Z0-9_]+)\\)`, 'g');
                     let match;
@@ -140,7 +142,7 @@ class StreamSports99Provider extends BaseProvider {
                     while ((match = varRegex.exec(concatMatch[0])) !== null) {
                       vars.push(match[1]);
                     }
-                    
+
                     let m3u8Url = '';
                     for (const v of vars) {
                       const valMatch = html.match(new RegExp(`var\\s+${v}\\s*=\\s*'([^']+)'`));
@@ -150,18 +152,17 @@ class StreamSports99Provider extends BaseProvider {
                         try { m3u8Url += Buffer.from(b64, 'base64').toString('utf8'); } catch(e) {}
                       }
                     }
-                    
+
                     if (m3u8Url) {
-                      const embedPath = `streamsports99/${sourceId || 'match'}/stream${idx+1}`;
+                      const embedPath = `streamsports99/${sourceId || 'match'}/stream${idx + 1}`;
                       const embedOrigin = 'https://streamsports99.fun';
                       const proxiedUrl = `/api/hls?url=${encodeURIComponent(m3u8Url)}&referer=${encodeURIComponent('https://streamsports99.fun/')}&embed=${encodeURIComponent(embedPath)}&embedOrigin=${encodeURIComponent(embedOrigin)}`;
-                      streams.push(new StreamEntity({
+                      return new StreamEntity({
                         name: `StreamSports99`,
                         title: ch.channel_name || `VIP Stream ${idx + 1}`,
                         url: proxiedUrl,
                         resolution: 'HD'
-                      }));
-                      continue; // move to next channel
+                      });
                     }
                   }
                 }
@@ -169,14 +170,21 @@ class StreamSports99Provider extends BaseProvider {
             } catch (e) {
               console.warn(`[${this.name}] Failed to extract m3u8 for ${ch.url}:`, e.message);
             }
-            
+
             // Fallback to web player link if extraction fails
-            streams.push(new StreamEntity({
+            return new StreamEntity({
               name: `StreamSports99`,
               title: ch.channel_name || `VIP Stream ${idx + 1} (Web Player)`,
               externalUrl: ch.url,
               resolution: 'HD'
-            }));
+            });
+          })
+        );
+
+        // Collect all successfully resolved channel streams
+        for (const result of channelResults) {
+          if (result.status === 'fulfilled' && result.value) {
+            streams.push(result.value);
           }
         }
       }
