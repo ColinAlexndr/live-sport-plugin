@@ -31,16 +31,31 @@ const container = require('./container');
 
 const RESOLVER_PORT = process.env.RESOLVER_PORT || '3000';
 const resolverPath = path.join(__dirname, '..', 'resolver', 'src', 'server.js');
-console.log(`Starting Stream Resolver at ${resolverPath} on port ${RESOLVER_PORT}...`);
-const resolverProcess = spawn('node', [resolverPath], {
-  stdio: 'inherit',
-  env: { ...process.env, PORT: RESOLVER_PORT, BASE_URL: BASE_URL }
-});
-resolverProcess.on('error', (err) => console.error('Resolver spawn error:', err));
-resolverProcess.on('exit', (code, signal) => console.error(`[FATAL] Resolver process exited with code ${code} and signal ${signal}. Streams will not work until restarted.`));
+let resolverProcess = null;
+let isShuttingDown = false;
+
+function spawnResolver() {
+  if (isShuttingDown) return;
+  console.log(`Starting Stream Resolver at ${resolverPath} on port ${RESOLVER_PORT}...`);
+  resolverProcess = spawn('node', [resolverPath], {
+    stdio: 'inherit',
+    env: { ...process.env, PORT: RESOLVER_PORT, BASE_URL: BASE_URL }
+  });
+  
+  resolverProcess.on('error', (err) => console.error('[FATAL] Resolver spawn error:', err));
+  
+  resolverProcess.on('exit', (code, signal) => {
+    if (isShuttingDown) return;
+    console.error(`[FATAL] Resolver process exited with code ${code} and signal ${signal}. Restarting in 2 seconds...`);
+    setTimeout(spawnResolver, 2000);
+  });
+}
+
+spawnResolver();
 
 // Ensure child process is killed when the parent exits
 function shutdownResolver() {
+  isShuttingDown = true;
   if (resolverProcess && !resolverProcess.killed) {
     console.log('Shutting down Stream Resolver...');
     resolverProcess.kill();
@@ -83,6 +98,7 @@ app.get('/api/matches', (req, res) => {
 app.use('/api', createProxyMiddleware({
   target: `http://127.0.0.1:${RESOLVER_PORT}/api`,
   changeOrigin: true,
+  xfwd: true,
   logLevel: 'debug',
   onError: (err, req, res) => {
     console.error('[Proxy Error] Failed to proxy /api request to internal resolver:', err.message);
