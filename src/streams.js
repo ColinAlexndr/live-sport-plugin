@@ -18,11 +18,11 @@ async function handleStream(type, id, config) {
 
   const streams = [];
 
-  const SOURCE_PRIORITY = { admin: 1, echo: 1, golf: 1, delta: 1, 'watchfooty': 2, 'cdnlive': 3, 'streamsports99': 4, 'streamic': 5, 'ppvdomains': 6, 'streamfree': 7, 'timstreams': 8, 'bintv': 9, 'ntv': 10, 'sportyhunter': 11, 'streamsports': 12, 'iptv-org': 13 };
+  const SOURCE_PRIORITY = { admin: 1, echo: 1, golf: 1, delta: 1, 'watchfooty': 2, 'cdnlive': 3, 'streamsports99': 4, 'streamic': 5, 'ppvdomains': 6, 'strims24': 7, 'streamfree': 8, 'timstreams': 9, 'bintv': 10, 'ntv': 11, 'sportyhunter': 12, 'streamsports': 13, 'iptv-org': 14 };
   const sortedSources = [...match.sources].sort((a, b) => {
     // If a source isn't in the list, but it's not one of our known fallback providers, 
     // it's likely a new Streamed.pk source. Give it priority 1.5 so it stays near the top.
-    const getPriority = (src) => SOURCE_PRIORITY[src] ?? (['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org'].includes(src) ? 99 : 1.5);
+    const getPriority = (src) => SOURCE_PRIORITY[src] ?? (['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org'].includes(src) ? 99 : 1.5);
     const pa = getPriority(a.source);
     const pb = getPriority(b.source);
     if (pa !== pb) return pa - pb;
@@ -41,7 +41,7 @@ async function handleStream(type, id, config) {
   let activeSources = sortedSources;
   if (config && config.sources && config.sources !== 'none') {
     const enabled = config.sources.split(',');
-    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org'];
+    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org'];
     activeSources = sortedSources.filter(src => {
       if (src.source.startsWith('yaml_')) return true;
       const isFallback = KNOWN_FALLBACKS.includes(src.source);
@@ -53,7 +53,7 @@ async function handleStream(type, id, config) {
   } else {
     // If no config is passed (default install), we still need to filter out Streamed.pk
     // since the source is completely removed.
-    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org'];
+    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org'];
     activeSources = sortedSources.filter(src => {
       if (src.source.startsWith('yaml_')) return true;
       return KNOWN_FALLBACKS.includes(src.source);
@@ -104,6 +104,9 @@ async function handleStream(type, id, config) {
       } else if (sourceName === 'ppvdomains') {
         const provider = container.resolve('ppvDomainsProvider');
         resStreams = await provider.resolveStream(src.id, match.category, match.title, src);
+      } else if (sourceName === 'strims24') {
+        const provider = container.resolve('strims24Provider');
+        resStreams = await provider.resolveStream(src.id, match.category, match.title);
       } else if (sourceName === 'iptv-org') {
         resStreams = [{
           name: 'Nuvio Direct',
@@ -172,7 +175,7 @@ async function handleStream(type, id, config) {
     streamfree: 'StreamFree', timstreams: 'TimStreams', bintv: 'BinTV',
     ntv: 'NTV', sportyhunter: 'SportyHunter', streamsports: 'StreamSports',
     'iptv-org': 'Direct IPTV', 'streamsports99': 'StreamSports99',
-    'ppvdomains': 'PPV Domains', 'streamic': 'Streamic'
+    'ppvdomains': 'PPV Domains', 'streamic': 'Streamic', 'strims24': 'Strims24'
   };
 
   streams.forEach(s => {
@@ -198,6 +201,7 @@ async function handleStream(type, id, config) {
     else if (s.title && s.title.toLowerCase().includes('streamsports99')) providerName = 'StreamSports99';
     else if (s.title && s.title.toLowerCase().includes('ppv domains')) providerName = 'PPV Domains';
     else if (s.title && s.title.toLowerCase().includes('streamic')) providerName = 'Streamic';
+    else if (s.title && s.title.toLowerCase().includes('strims24')) providerName = 'Strims24';
     else if (s.title && s.title.toLowerCase().includes('24/7')) providerName = 'Direct IPTV';
 
     let originalTitle = s.title || '';

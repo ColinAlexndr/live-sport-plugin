@@ -19,6 +19,7 @@ const CdnLiveProvider = require('./providers/CdnLiveProvider');
 const StreamSports99Provider = require('./providers/StreamSports99Provider');
 const StreamicProvider = require('./providers/StreamicProvider');
 const PpvDomainsProvider = require('./providers/PpvDomainsProvider');
+const Strims24Provider = require('./providers/Strims24Provider');
 
 const YamlProviderBuilder = require('./services/YamlProviderBuilder');
 
@@ -54,6 +55,7 @@ container.register({
   streamSports99Provider: asClass(StreamSports99Provider).singleton(),
   streamicProvider: asClass(StreamicProvider).singleton(),
   ppvDomainsProvider: asClass(PpvDomainsProvider).singleton(),
+  strims24Provider: asClass(Strims24Provider).singleton(),
   yamlProviders: asValue(yamlProviders)
 });
 
