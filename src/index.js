@@ -369,7 +369,7 @@ app.get('/watch', (req, res) => {
     // Auto-proxy m3u8 urls through our local server to completely bypass CORS in the browser!
     let finalUrl = targetUrl;
     if (isM3u8 && !targetUrl.includes('/api/hls')) {
-      finalUrl = '/api/hls?url=' + encodeURIComponent(targetUrl) + '&referer=' + encodeURIComponent('https://embed.st/') + '&embedOrigin=' + encodeURIComponent('https://embed.st');
+      finalUrl = '/api/hls/playlist.m3u8?url=' + encodeURIComponent(targetUrl) + '&referer=' + encodeURIComponent('https://embed.st/') + '&embedOrigin=' + encodeURIComponent('https://embed.st');
     }
 
     if (isM3u8) {
