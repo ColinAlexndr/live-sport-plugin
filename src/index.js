@@ -113,7 +113,9 @@ app.use('/api', createProxyMiddleware({
 // so we can dynamically rewrite stream URLs to use the correct absolute host based 
 // on the incoming request, instead of hardcoding BASE_URL. This fixes issues where
 // the addon is accessed remotely but falls back to localhost URLs.
-app.use('/stream/', (req, res, next) => {
+app.use((req, res, next) => {
+  if (!req.path.includes('/stream/')) return next();
+  
   const originalWrite = res.write;
   const originalEnd = res.end;
   let chunks = [];
