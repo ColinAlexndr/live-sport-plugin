@@ -178,12 +178,13 @@ app.get('/:config?/manifest.json', (req, res, next) => {
   let configStr = req.params.config;
   let parsedConfig = {};
   if (configStr) {
-    // If there is a config string but it's not JSON, skip custom handling
-    if (!configStr.startsWith('%7B') && !configStr.startsWith('{')) {
-      return next();
-    }
     try {
-      parsedConfig = JSON.parse(decodeURIComponent(configStr));
+      if (configStr.startsWith('%7B') || configStr.startsWith('{')) {
+        parsedConfig = JSON.parse(decodeURIComponent(configStr));
+      } else {
+        const decoded = Buffer.from(configStr, 'base64').toString('utf-8');
+        parsedConfig = JSON.parse(decoded);
+      }
     } catch (e) {
       return next();
     }
