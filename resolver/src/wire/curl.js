@@ -1,4 +1,13 @@
 import { fetchHeaders } from './headers.js'
+import { Agent, setGlobalDispatcher } from 'undici'
+
+// Use a shared Keep-Alive agent for native fetch to prevent tearing down TCP connections
+setGlobalDispatcher(new Agent({
+  keepAliveTimeout: 60000, // 1 minute
+  keepAliveMaxTimeout: 600000,
+  connections: 500,
+  pipelining: 10
+}))
 
 function hdrs(slot) {
   const referer = slot.referer || `${slot.origin}/`

@@ -389,7 +389,10 @@ app.get('/watch', (req, res) => {
         });
 
         const hls = new Hls({
-          liveSyncDurationCount: 7,
+          liveSyncDurationCount: 3,
+          liveMaxLatencyDurationCount: 5,
+          lowLatencyMode: true,
+          enableWorker: true,
           loader: engine.createLoaderClass()
         });
 
@@ -401,7 +404,12 @@ app.get('/watch', (req, res) => {
           loader.classList.add('hidden');
         });
       } else if (Hls.isSupported()) {
-        const hls = new Hls();
+        const hls = new Hls({
+          liveSyncDurationCount: 3,
+          liveMaxLatencyDurationCount: 5,
+          lowLatencyMode: true,
+          enableWorker: true
+        });
         hls.loadSource(finalUrl);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
