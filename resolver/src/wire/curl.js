@@ -19,8 +19,8 @@ export async function pull(url, slot) {
 
 export async function pullStream(url, slot) {
   const headers = hdrs(slot)
-  // Increase timeout for streaming to 30s
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(30000) })
+  // Removed hard 30s timeout so live streams don't randomly abort
+  const res = await fetch(url, { headers })
   if (!res.ok) throw new Error(`upstream ${res.status}`)
   return res
 }

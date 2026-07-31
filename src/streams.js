@@ -108,11 +108,20 @@ async function handleStream(type, id, config) {
         const provider = container.resolve('strims24Provider');
         resStreams = await provider.resolveStream(src.id, match.category, match.title);
       } else if (sourceName === 'iptv-org') {
+        const proxyHeaders = {};
+        if (src.user_agent) proxyHeaders['User-Agent'] = src.user_agent;
+        if (src.referrer) proxyHeaders['Referer'] = src.referrer;
+
         resStreams = [{
           name: 'Nuvio Direct',
           title: `24/7 TV (${src.quality || 'Auto'})`,
           url: src.url,
-          resolution: src.quality
+          resolution: src.quality,
+          behaviorHints: {
+            proxyHeaders: {
+              request: proxyHeaders
+            }
+          }
         }];
       } else {
         // Unknown or unsupported source, ignore
