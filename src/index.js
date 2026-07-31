@@ -164,7 +164,9 @@ app.use((req, res, next) => {
             return originalEnd.call(res, newBuffer, 'utf8', callback);
           }
         }
-      } catch (e) { }
+      } catch (e) {
+        console.error('[Proxy Error]', e.message);
+      }
     }
     
     const finalBuffer = Buffer.concat(chunks);

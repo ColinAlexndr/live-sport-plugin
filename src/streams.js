@@ -180,8 +180,8 @@ async function handleStream(type, id, config) {
 
   streams.forEach(s => {
     let quality = s.resolution || s.quality || 'Auto';
-    if (quality.includes('x')) {
-       const h = quality.split('x')[1];
+    if (String(quality).includes('x')) {
+       const h = String(quality).split('x')[1];
        quality = h + 'p';
     }
     
