@@ -5,8 +5,7 @@ import { Agent, setGlobalDispatcher } from 'undici'
 setGlobalDispatcher(new Agent({
   keepAliveTimeout: 60000, // 1 minute
   keepAliveMaxTimeout: 600000,
-  connections: 500,
-  pipelining: 10
+  connections: 500
 }))
 
 function hdrs(slot) {

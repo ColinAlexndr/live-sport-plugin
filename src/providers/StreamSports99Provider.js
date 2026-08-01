@@ -122,7 +122,7 @@ class StreamSports99Provider extends BaseProvider {
                   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                   'Referer': 'https://streamsports99.fun/'
                 },
-                signal: AbortSignal.timeout(5000)
+                signal: AbortSignal.timeout(10000)
               });
               
               if (playerRes.ok) {
