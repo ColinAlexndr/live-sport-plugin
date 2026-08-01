@@ -186,7 +186,12 @@ app.get('/:config?/manifest.json', (req, res, next) => {
       if (configStr.startsWith('%7B') || configStr.startsWith('{')) {
         parsedConfig = JSON.parse(decodeURIComponent(configStr));
       } else {
-        const decoded = Buffer.from(configStr, 'base64').toString('utf-8');
+        // Convert base64url back to standard base64
+        let base64 = configStr.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) {
+          base64 += '=';
+        }
+        const decoded = Buffer.from(base64, 'base64').toString('utf-8');
         parsedConfig = JSON.parse(decoded);
       }
     } catch (e) {
