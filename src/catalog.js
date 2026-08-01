@@ -179,7 +179,7 @@ async function handleCatalog(type, id, extra, config) {
       filteredMatches = []; // If no config, return empty
     }
   } else if (categoryMatch === 'other') {
-    const topLevelCats = ['football', 'cricket', 'motorsport', 'networks'];
+    const topLevelCats = ['football', 'cricket', 'motorsport', 'networks', 'hockey', 'baseball'];
     filteredMatches = matches.filter(m => !topLevelCats.includes(m.category));
     
     if (extra && extra.genre) {

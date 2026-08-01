@@ -24,13 +24,15 @@ const manifest = {
     { type: 'tv', id: 'nuvio_sports_football', name: '⚽ Soccer', extra: [{ name: 'search', isRequired: false }] },
     { type: 'tv', id: 'nuvio_sports_cricket', name: '🏏 Cricket', extra: [{ name: 'search', isRequired: false }] },
     { type: 'tv', id: 'nuvio_sports_motorsport', name: '🏎️ F1 & Motor', extra: [{ name: 'search', isRequired: false }] },
+    { type: 'tv', id: 'nuvio_sports_hockey', name: '🏒 Hockey', extra: [{ name: 'search', isRequired: false }] },
+    { type: 'tv', id: 'nuvio_sports_baseball', name: '⚾ Baseball', extra: [{ name: 'search', isRequired: false }] },
     { 
       type: 'tv', 
       id: 'nuvio_sports_other', 
       name: '🏅 Other Sports', 
       extra: [
         { name: 'search', isRequired: false },
-        { name: 'genre', options: ['Basketball', 'MMA', 'Golf', 'Tennis', 'Rugby', 'American Football', 'Baseball', 'Hockey', 'Darts', 'Other'], isRequired: false }
+        { name: 'genre', options: ['Basketball', 'MMA', 'Golf', 'Tennis', 'Rugby', 'American Football', 'Darts', 'Other'], isRequired: false }
       ] 
     },
     { type: 'tv', id: 'nuvio_sports_networks', name: '📺 24/7 Sports TV', extra: [{ name: 'search', isRequired: false }] },

@@ -212,6 +212,8 @@ app.get('/:config?/manifest.json', (req, res, next) => {
     if (enabledSports.includes('football')) keepCatalogs.push('nuvio_sports_football');
     if (enabledSports.includes('cricket')) keepCatalogs.push('nuvio_sports_cricket');
     if (enabledSports.includes('motorsport')) keepCatalogs.push('nuvio_sports_motorsport');
+    if (enabledSports.includes('hockey')) keepCatalogs.push('nuvio_sports_hockey');
+    if (enabledSports.includes('baseball')) keepCatalogs.push('nuvio_sports_baseball');
     
     // "Other Sports" contains these genres
     const otherSports = ['basketball', 'american_football', 'rugby', 'other'];
