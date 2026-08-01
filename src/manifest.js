@@ -9,11 +9,11 @@ const { addonBuilder } = require('stremio-addon-sdk');
 
 const manifest = {
   id: 'community.nuvio.live-sports',
-  version: '2.1.0',
-  name: '📡 Live Sports TV',
+  version: '3.0.0',
+  name: '🏆 Nuvio Live Sports',
   description:
-    'Free live sports TV channels — beIN Sports, Eurosport, Alkass, ESPN & more. ' +
-    'Direct HLS streams, plays natively inside Nuvio. Powered by iptv-org.',
+    'The ultimate live sports aggregator. Stream live Football, NBA, NFL, NHL, F1, and more. ' +
+    'Scrapes high-speed streams from multiple providers including StreamFree, TimStreams, and IPTV. Zero-lag proxy included.',
   logo: 'https://iptv-org.github.io/iptv/categories/sports.m3u',
 
   types: ['tv'],

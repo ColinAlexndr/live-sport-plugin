@@ -1,7 +1,7 @@
 {
   "name": "nuvio-live-sports-plugin",
-  "version": "1.0.0",
-  "description": "Live sports streaming add-on for Nuvio/Stremio powered by Streamed.pk",
+  "version": "3.0.0",
+  "description": "The ultimate live sports streaming add-on for Nuvio/Stremio. Scrapes multiple high-speed providers with a zero-lag proxy.",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
