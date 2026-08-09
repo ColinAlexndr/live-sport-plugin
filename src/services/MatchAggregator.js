@@ -26,46 +26,54 @@ class MatchAggregator {
 
   async syncMatches() {
     console.log('[MatchAggregator] Fetching from all providers...');
-    
     const finalMatches = [];
 
-    // Fetch and merge providers sequentially to keep peak memory footprint low (for Alwaysdata)
-    for (const p of this.providers) {
-      try {
-        const providerMatches = await p.getMatches();
-        if (!providerMatches || !Array.isArray(providerMatches)) continue;
-
-        providerMatches.forEach(match => {
-          if (!match.id || !match.title) return;
-          
-          const existing = finalMatches.find(m => this.isSameEvent(m, match));
-          
-          if (!existing) {
-            finalMatches.push(match);
-          } else {
-            // Merge sources
-            if (match.sources && Array.isArray(match.sources)) {
-              match.sources.forEach(src => {
-                if (!existing.sources.find(s => s.id === src.id && s.source === src.source)) {
-                  existing.sources.push(src);
-                }
-              });
-            }
-            // Prefer popular = '1'
-            if (match.popular === '1') {
-              existing.popular = '1';
-            }
-            // Prefer metadata if existing lacks it
-            if (!existing.poster && match.poster) existing.poster = match.poster;
-            if (existing.description === 'No description' && match.description && match.description !== 'No description') {
-              existing.description = match.description;
-            }
-            if (!existing.logo && match.logo) existing.logo = match.logo;
+    const processProviderMatches = (providerMatches) => {
+      if (!providerMatches || !Array.isArray(providerMatches)) return;
+      providerMatches.forEach(match => {
+        if (!match.id || !match.title) return;
+        
+        const existing = finalMatches.find(m => this.isSameEvent(m, match));
+        if (!existing) {
+          finalMatches.push(match);
+        } else {
+          if (match.sources && Array.isArray(match.sources)) {
+            match.sources.forEach(src => {
+              if (!existing.sources.find(s => s.id === src.id && s.source === src.source)) {
+                existing.sources.push(src);
+              }
+            });
           }
-        });
-      } catch (err) {
-        console.error(`[MatchAggregator] Provider fetch failed:`, err.message);
+          if (match.popular === '1') existing.popular = '1';
+          if (!existing.poster && match.poster) existing.poster = match.poster;
+          if (existing.description === 'No description' && match.description && match.description !== 'No description') {
+            existing.description = match.description;
+          }
+          if (!existing.logo && match.logo) existing.logo = match.logo;
+        }
+      });
+    };
+
+    if (process.env.LOW_MEMORY_MODE === 'true') {
+      // Memory-safe sequential fetching (Alwaysdata)
+      for (const p of this.providers) {
+        try {
+          const providerMatches = await p.getMatches();
+          processProviderMatches(providerMatches);
+        } catch (err) {
+          console.error(`[MatchAggregator] Provider fetch failed:`, err.message);
+        }
       }
+    } else {
+      // Fast parallel fetching (Render / Local)
+      const results = await Promise.allSettled(this.providers.map(p => p.getMatches()));
+      results.forEach((promiseResult, index) => {
+        if (promiseResult.status === 'fulfilled') {
+          processProviderMatches(promiseResult.value);
+        } else {
+          console.error(`[MatchAggregator] Provider ${index} failed:`, promiseResult.reason);
+        }
+      });
     }
     
     const now = Date.now();

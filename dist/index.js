@@ -50670,36 +50670,48 @@ var require_MatchAggregator = __commonJS({
       async syncMatches() {
         console.log("[MatchAggregator] Fetching from all providers...");
         const finalMatches = [];
-        for (const p of this.providers) {
-          try {
-            const providerMatches = await p.getMatches();
-            if (!providerMatches || !Array.isArray(providerMatches)) continue;
-            providerMatches.forEach((match) => {
-              if (!match.id || !match.title) return;
-              const existing = finalMatches.find((m) => this.isSameEvent(m, match));
-              if (!existing) {
-                finalMatches.push(match);
-              } else {
-                if (match.sources && Array.isArray(match.sources)) {
-                  match.sources.forEach((src) => {
-                    if (!existing.sources.find((s) => s.id === src.id && s.source === src.source)) {
-                      existing.sources.push(src);
-                    }
-                  });
-                }
-                if (match.popular === "1") {
-                  existing.popular = "1";
-                }
-                if (!existing.poster && match.poster) existing.poster = match.poster;
-                if (existing.description === "No description" && match.description && match.description !== "No description") {
-                  existing.description = match.description;
-                }
-                if (!existing.logo && match.logo) existing.logo = match.logo;
+        const processProviderMatches = (providerMatches) => {
+          if (!providerMatches || !Array.isArray(providerMatches)) return;
+          providerMatches.forEach((match) => {
+            if (!match.id || !match.title) return;
+            const existing = finalMatches.find((m) => this.isSameEvent(m, match));
+            if (!existing) {
+              finalMatches.push(match);
+            } else {
+              if (match.sources && Array.isArray(match.sources)) {
+                match.sources.forEach((src) => {
+                  if (!existing.sources.find((s) => s.id === src.id && s.source === src.source)) {
+                    existing.sources.push(src);
+                  }
+                });
               }
-            });
-          } catch (err) {
-            console.error(`[MatchAggregator] Provider fetch failed:`, err.message);
+              if (match.popular === "1") existing.popular = "1";
+              if (!existing.poster && match.poster) existing.poster = match.poster;
+              if (existing.description === "No description" && match.description && match.description !== "No description") {
+                existing.description = match.description;
+              }
+              if (!existing.logo && match.logo) existing.logo = match.logo;
+            }
+          });
+        };
+        if (process.env.LOW_MEMORY_MODE === "true") {
+          for (const p of this.providers) {
+            try {
+              const providerMatches = await p.getMatches();
+              processProviderMatches(providerMatches);
+            } catch (err) {
+              console.error(`[MatchAggregator] Provider fetch failed:`, err.message);
+            }
           }
+        } else {
+          const results = await Promise.allSettled(this.providers.map((p) => p.getMatches()));
+          results.forEach((promiseResult, index) => {
+            if (promiseResult.status === "fulfilled") {
+              processProviderMatches(promiseResult.value);
+            } else {
+              console.error(`[MatchAggregator] Provider ${index} failed:`, promiseResult.reason);
+            }
+          });
         }
         const now = Date.now();
         const TRENDING_KEYWORDS = ["real madrid", "barcelona", "manchester", "arsenal", "liverpool", "chelsea", "bayern", "psg", "lakers", "warriors", "mcgregor", "super bowl", "champions league", "el clasico", "f1", "formula 1", "grand prix"];
@@ -106824,10 +106836,13 @@ var resolverProcess = null;
 var isShuttingDown = false;
 function spawnResolver() {
   if (isShuttingDown) return;
-  console.log(`Starting Stream Resolver at ${resolverPath} on port ${RESOLVER_PORT}...`);
+  const spawnEnv = { ...process.env, PORT: RESOLVER_PORT, HOST: "127.0.0.1", BASE_URL };
+  if (process.env.LOW_MEMORY_MODE === "true") {
+    spawnEnv.NODE_OPTIONS = "--max-old-space-size=30";
+  }
   resolverProcess = spawn("node", [resolverPath], {
     stdio: "inherit",
-    env: { ...process.env, PORT: RESOLVER_PORT, HOST: "127.0.0.1", BASE_URL, NODE_OPTIONS: "--max-old-space-size=30" }
+    env: spawnEnv
   });
   resolverProcess.on("error", (err) => console.error("[FATAL] Resolver spawn error:", err));
   resolverProcess.on("exit", (code, signal) => {

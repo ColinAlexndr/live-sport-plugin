@@ -36,10 +36,14 @@ let isShuttingDown = false;
 
 function spawnResolver() {
   if (isShuttingDown) return;
-  console.log(`Starting Stream Resolver at ${resolverPath} on port ${RESOLVER_PORT}...`);
+  const spawnEnv = { ...process.env, PORT: RESOLVER_PORT, HOST: '127.0.0.1', BASE_URL: BASE_URL };
+  if (process.env.LOW_MEMORY_MODE === 'true') {
+    spawnEnv.NODE_OPTIONS = '--max-old-space-size=30';
+  }
+
   resolverProcess = spawn('node', [resolverPath], {
     stdio: 'inherit',
-    env: { ...process.env, PORT: RESOLVER_PORT, HOST: '127.0.0.1', BASE_URL: BASE_URL, NODE_OPTIONS: '--max-old-space-size=30' }
+    env: spawnEnv
   });
   
   resolverProcess.on('error', (err) => console.error('[FATAL] Resolver spawn error:', err));
