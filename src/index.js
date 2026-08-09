@@ -39,7 +39,7 @@ function spawnResolver() {
   console.log(`Starting Stream Resolver at ${resolverPath} on port ${RESOLVER_PORT}...`);
   resolverProcess = spawn('node', [resolverPath], {
     stdio: 'inherit',
-    env: { ...process.env, PORT: RESOLVER_PORT, BASE_URL: BASE_URL }
+    env: { ...process.env, PORT: RESOLVER_PORT, HOST: '127.0.0.1', BASE_URL: BASE_URL }
   });
   
   resolverProcess.on('error', (err) => console.error('[FATAL] Resolver spawn error:', err));
@@ -450,7 +450,8 @@ app.get('/health', (_, res) => res.json({ status: 'ok', service: 'nuvio-live-spo
 
 container.resolve('cronService').start();
 
-app.listen(PORT, '0.0.0.0', () => {
+const BIND_HOST = process.env.HOST || process.env.IP || '0.0.0.0';
+app.listen(PORT, BIND_HOST, () => {
   console.log('');
   console.log('╔══════════════════════════════════════════════════════╗');
   console.log('║          🔴 Nuvio Live Sports Plugin                 ║');
