@@ -38,7 +38,7 @@ function spawnResolver() {
   if (isShuttingDown) return;
   const spawnEnv = { ...process.env, PORT: RESOLVER_PORT, HOST: '127.0.0.1', BASE_URL: BASE_URL };
   if (process.env.LOW_MEMORY_MODE === 'true') {
-    spawnEnv.NODE_OPTIONS = '--max-old-space-size=30';
+    /* spawnEnv.NODE_OPTIONS removed to prevent 502 crashes */
   }
 
   resolverProcess = spawn('node', [resolverPath], {
