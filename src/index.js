@@ -30,7 +30,10 @@ const container = require('./container');
 // ─── Spawn the Streamed.pk Resolver ───────────────────────────────────────────
 
 const RESOLVER_PORT = process.env.RESOLVER_PORT || '3000';
-const resolverPath = path.join(__dirname, '..', 'resolver', 'src', 'server.js');
+const fs = require('fs');
+const bundledResolver = path.join(__dirname, 'resolver.mjs');
+const sourceResolver = path.join(__dirname, '..', 'resolver', 'src', 'server.js');
+const resolverPath = fs.existsSync(bundledResolver) ? bundledResolver : sourceResolver;
 let resolverProcess = null;
 let isShuttingDown = false;
 
