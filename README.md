@@ -92,6 +92,22 @@ Through the local `/configure` UI, you can append a base64/URI-encoded configura
 - **teams:** Comma-separated list of favorite teams (e.g., `Arsenal,Lakers`). These populate the "⭐ Your Teams" catalog.
 
 ## ☁️ Build and Deployment Instructions
+
+### Option 1: Free Zero-Touch Hosting on Alwaysdata (Recommended)
+Alwaysdata provides a generous free tier that doesn't require a credit card and runs 24/7. We've created a zero-touch auto-updater script so you don't need any technical skills!
+
+1. Go to [Alwaysdata](https://www.alwaysdata.com/en/register/) and create a free account.
+2. Go to **Remote Access > SSH** in your dashboard, click the link to open the web terminal, log in, and paste this command:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/rajhodedara/nuvio-deploy/master/alwaysdata.sh -o start.sh
+   ```
+3. Go to **Web > Sites** and click **Add a site**.
+4. Set the **Type** to `Node.js` and the **Command** to `bash start.sh`. Leave the working directory blank and submit!
+5. Add `https://[YOUR_ACCOUNT_NAME].alwaysdata.net/manifest.json` to Stremio.
+
+Whenever there's an update, just go back to the Sites panel and click the **Restart (🔄)** button to automatically fetch the newest code. For more details, see the [Nuvio Deploy Guide](https://github.com/rajhodedara/nuvio-deploy).
+
+### Option 2: Render.com Deployment
 This project is configured for one-click deployment on **Render.com**.
 1. Push your repository to GitHub.
 2. Sign in to Render and create a new **Web Service**.
