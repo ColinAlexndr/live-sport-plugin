@@ -1,145 +1,83 @@
 # 🔴 Nuvio Live Sports Plugin
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/rajhodedara/live-sport-plugin)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-2.1.0-brightgreen.svg)](#)
+[![Version](https://img.shields.io/badge/version-3.0.0-brightgreen.svg)](#)
 
 ## 📖 Description
 A production-grade live sports streaming add-on for [Nuvio](https://nuvio.tv) and [Stremio](https://www.stremio.com/). It serves as a powerful multi-source aggregator that provides native live sports streams (Football, Basketball, Motorsport, Cricket, and more) inside your client, utilizing an advanced internal stream resolver to bypass CORS restrictions.
 
+---
+
+## 🛑 WHY YOU MUST SELF-HOST THIS ADDON
+
+This add-on is designed to be **self-hosted** by users. If you try to host a single public instance for thousands of users, **it will fail**. Here is why:
+
+1. **IP Bans (Crucial):** If 1,000 people use a single public link, the streaming sites (like Streamed.pk) will see 1,000 requests coming from your single server IP address. They will assume it's a bot attack and permanently ban your server IP. **If everyone self-hosts, the requests come from their own unique home IP addresses, making it impossible for providers to block them.**
+2. **Memory Crashes:** Free hosting providers usually offer 100MB-500MB of RAM. Proxying video streams requires memory buffering. A central server will quickly run out of RAM and crash in a loop.
+3. **Bandwidth Bills:** Proxying live video streams uses a *massive* amount of internet bandwidth. A central server will burn through terabytes of data in days, and hosting companies will shut you down or charge you huge fees. Self-hosting uses your own home internet data.
+
+**Do not distribute a single public link to your users. Distribute this repository and instruct them to self-host.**
+
+---
+
 ## ✨ Key Features
-- **🏟️ Multi-Source Aggregator:** Combines matches and streams from multiple sources (StreamFree, Streamed.pk, BinTV, TimStreams, SportyHunter, NTV, iptv-org) into a unified catalog.
+- **🏟️ Multi-Source Aggregator:** Combines matches and streams from multiple sources into a unified catalog.
 - **⚡ Background Cron Caching:** Uses Stale-While-Revalidate (SWR) caching with an internal background Cron Service to ensure instant loading without hammering provider APIs.
 - **🛡️ Opossum Circuit Breakers:** Provider requests are isolated via circuit breakers to instantly fail-over if a streaming site goes down.
-- **🧠 Algorithmic Stream Scoring:** Prioritizes high-resolution direct `.m3u8` links over external web players.
 - **🌐 Built-in Stream Resolver:** Spawns a secondary proxy process (`resolver`) to bypass CORS and referrer restrictions natively.
-- **📡 WebRTC P2P Mesh Network:** Integrates P2P sharing in the fallback Web Player (`/watch`) to handle massive concurrent traffic dynamically.
 - **⚙️ Dynamic Configuration:** Features a beautiful local configuration page to curate your favorite sports and teams.
-- **🏗️ Zero-Code YAML Scrapers:** Add new streaming sources instantly using CSS selectors in YAML.
 
-## 📸 Screenshots
-*(Screenshots not found in project - place your screenshots here)*
-- Dashboard Configuration: `[Placeholder for configure.html screenshot]`
-- Stremio Catalog View: `[Placeholder for Stremio Board screenshot]`
+## 🚀 Installation & Self-Hosting Guide
 
-## 🌍 Demo / Live Link
-*Not found in project.* (Can be self-hosted or deployed via Render).
+### Option 1: Local PC / Raspberry Pi (Recommended)
+Hosting on your own computer or Raspberry Pi is the best option because it uses your home IP address, which streaming sites will never block.
 
-## 🛠️ Tech Stack
-- **Runtime:** [Node.js](https://nodejs.org/) (v22+)
-- **Framework:** [Express.js](https://expressjs.com/)
-- **Scraping & DOM:** [Cheerio](https://cheerio.js.org/), [Happy DOM](https://github.com/capricorn86/happy-dom)
-- **Dependency Injection:** [Awilix](https://github.com/jeffijoe/awilix)
-- **Resilience:** [Opossum](https://nodeshift.dev/opossum/) (Circuit Breakers)
-- **Addon SDK:** [stremio-addon-sdk](https://github.com/Stremio/stremio-addon-sdk)
-- **Proxying:** http-proxy-middleware
-- **Testing:** Jest
+**Prerequisites:** Node.js (v22 or higher)
 
-## 📂 Folder Structure
-- `src/` — Main application logic.
-  - `src/domain/` — Data entities (`MatchEntity`, `StreamEntity`).
-  - `src/providers/` — Stream scrapers (JS and YAML-based).
-  - `src/services/` — Core business logic (`CacheService`, `CronService`, `CircuitBreakerService`, etc.).
-  - `src/index.js` — The Express server and addon entry point.
-- `public/` — Static assets, containing the configuration UI (`configure.html`).
-- `resolver/` — Internal proxy server spawned as a child process to bypass stream CORS restrictions.
-- `scripts/` — CLI tools, such as `generate-provider.js` for scaffolding YAML providers.
-- `test/` — Unit tests.
-- `render.yaml` — Deployment configuration for Render.com.
-
-## 🚀 Installation
-
-### Prerequisites
-- Node.js (v22 or higher)
-- npm
-
-### Local Setup
 1. Clone the repository:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/nuvio-live-sports-plugin.git
-   cd nuvio-live-sports-plugin
+   git clone https://github.com/rajhodedara/live-sport-plugin.git
+   cd live-sport-plugin
    ```
 2. Install dependencies:
    ```bash
    npm install
    ```
-3. Start the addon in development mode:
+3. Start the addon:
    ```bash
-   npm run dev
+   npm start
    ```
-   *(Or use `npm start` for production).*
+4. Open your browser and navigate to `http://localhost:7000`. Configure your sports, and click **Install Addon**.
 
-## 🔐 Environment Variables
-You can customize the addon via environment variables. See `.env.example` in the root:
-```env
-# Port the addon server will listen on (default 7000 if not specified)
-PORT=7000
-```
-*(The internal resolver will automatically pick a port or use `RESOLVER_PORT`)*.
+### Option 2: Deploying to Alwaysdata (Free Cloud)
+Alwaysdata offers a completely free 100MB tier without a credit card. While 100MB is very strict, we have highly optimized this app to run on it for personal use (1-2 users).
 
-## 🎮 Usage Instructions
-1. Run the project locally (`npm start`).
-2. Open your browser and navigate to `http://localhost:7000` (or your configured `PORT`).
-3. Use the **Nuvio Sports Premium Setup** page to select your preferred sports and input your favorite teams.
-4. Click **INSTALL ADDON** to generate your personalized `manifest.json` link and open it in Nuvio/Stremio.
+1. Sign up for a free account at [Alwaysdata](https://www.alwaysdata.com/).
+2. In your Alwaysdata dashboard, go to **Sites** -> **Add a new site**.
+3. Under **Type**, choose **Node.js**.
+4. Set the **Node.js version** to `22` or `24`.
+5. Connect your GitHub repository, or upload the files via FTP/SSH.
+6. **CRITICAL:** Set the startup command to:
+   ```bash
+   node --max-old-space-size=70 dist/index.js
+   ```
+   *(The `--max-old-space-size=70` flag is required so Node.js garbage collector triggers early, preventing the strict 100MB Alwaysdata limit from instantly killing your app (`SIGKILL 137`)).*
+7. Go to the public URL provided by Alwaysdata, configure your sports, and install it into Stremio/Nuvio!
 
-## 📡 API Documentation
-*Not found in project.* (This project is an addon that exposes a standard Stremio Addon manifest, not a general-purpose public API).
+### Option 3: Other Free Cloud Platforms
+If you have a credit card for verification, or find other free hosts, you can deploy this app as a standard Node.js web service. We recommend a host with at least **512MB RAM** for a completely stable experience (e.g., Koyeb, Render, Railway, Serv00).
+
+---
 
 ## 🎛️ Configuration Options
 Through the local `/configure` UI, you can append a base64/URI-encoded configuration object to the addon URL:
 - **sports:** Comma-separated list of enabled sports categories (e.g., `football,basketball,cricket`). Defaults to `all`.
 - **teams:** Comma-separated list of favorite teams (e.g., `Arsenal,Lakers`). These populate the "⭐ Your Teams" catalog.
 
-## ☁️ Build and Deployment Instructions
-This project is configured for one-click deployment on **Render.com**.
-1. Push your repository to GitHub.
-2. Sign in to Render and create a new **Web Service**.
-3. Link your repository.
-4. Render will automatically detect the `render.yaml` blueprint and deploy the application (installing dependencies and starting both the main server and resolver).
-5. Copy the generated Render URL (e.g., `https://your-app.onrender.com/manifest.json`) into Nuvio/Stremio.
-
 ## 🏗️ Architecture Overview
-The plugin leverages a highly modular **Dependency Injection** container (`Awilix`).
 1. **Frontend Proxy:** An Express server (`src/index.js`) handles Stremio catalog, meta, and stream requests. It also dynamically rewrites URLs to ensure remote hosting compatibility.
-2. **Cron Cache Service:** Instead of scraping on-demand, a background cron job periodically fetches and merges events from multiple APIs (StreamFree, Streamed.pk, BinTV, etc.), storing them in memory.
+2. **Cron Cache Service:** Instead of scraping on-demand, a background cron job periodically fetches and merges events from multiple APIs, storing them in memory.
 3. **Internal Resolver:** The main process spawns a child `node` process (`resolver/src/server.js`) that acts as a reverse proxy for HLS chunks (`/api/hls`).
-4. **Resilient Scraping:** Stream resolution requests are wrapped in `Opossum` circuit breakers to prevent cascading failures if a third-party site is unresponsive.
-
-## ⚙️ How the project works internally
-
-1. **Catalog Construction:** A background Cron job periodically fetches and merges events from multiple APIs (StreamFree, Streamed.pk, BinTV, etc.), storing them in memory. Fuzzy matching prevents duplicate events.
-2. **Extracting the Embed:** When you click a match, the add-on scrapes the original sports site to find the hidden video embed link.
-3. **Decrypting the `.m3u8`:** Streaming sites encrypt or hide their actual video source. The add-on runs a decryption process on that embedded link's HTML/JS to reverse-engineer and extract the raw `.m3u8` playlist file.
-4. **The CORS Problem:** If we gave that raw `.m3u8` link directly to Nuvio, it would fail. The stream provider checks the `Referer` and `Origin` headers to ensure the video is only played on their web player.
-5. **The Internal Proxy (The Magic):** To bypass this (and bypass any ISP blocks), the add-on spawns its own internal Proxy process (`resolver`). Instead of giving Nuvio the original video link, it gives Nuvio a link to *your deployed server*.
-6. **Downloading the Video Chunks:** When Nuvio asks your server for the stream, your server secretly reaches out to the original site. It attaches the exact fake `Referer` and `Origin` headers needed to spoof their security, intercepts the individual video chunks (`.ts` segments), and passes them directly back to Nuvio natively in real-time.
-7. **Render Keep-Alive Automation:** If deployed on Render's free tier, the application automatically detects its `RENDER_EXTERNAL_URL` and uses a background cron job to ping itself every 14 minutes. This guarantees the server never goes to sleep and remains blazing fast 24/7 without needing external tools like UptimeRobot!
-
-## ⚠️ Known Limitations
-- **In-Memory Cache:** All matches are stored in memory. A server restart momentarily clears the catalog until the next cron cycle.
-- **Third-Party Dependency:** Scrapers are dependent on external site DOM structures. If a provider updates their layout, their scraper (or YAML file) must be updated.
-- **Resource Usage:** Spawning a child process for the resolver might hit memory limits on very constrained free-tier hosts if heavily utilized.
-
-## 🔮 Future Improvements
-- Persistent storage (Redis/SQLite) for match cache to survive restarts.
-- Auto-updating mechanism for YAML provider schemas via a central repository.
-- More robust fuzzy-matching for team names across different languages.
-- Expanded localization and multi-language audio track detection.
-
-## 🤝 Contributing Guidelines
-Contributions are welcome!
-1. Fork the repository.
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`).
-3. Ensure you write or update unit tests (`npm run test`).
-4. To add new stream providers easily, use the CLI: `npm run generate:provider ProviderName`.
-5. Commit your changes and push.
-6. Open a Pull Request.
 
 ## 📄 License
 This project is licensed under the [MIT License](https://opensource.org/licenses/MIT) - for educational and personal use only.
-
-## 🙌 Acknowledgements
-- [Stremio Addon SDK](https://github.com/Stremio/stremio-addon-sdk) for the foundational architecture.
-- Source APIs and aggregators: StreamFree, Streamed.pk, BinTV, TimStreams, iptv-org.
-- [Opossum](https://nodeshift.dev/opossum/) for making circuit breaking effortless.
