@@ -101,7 +101,7 @@ Alwaysdata provides a generous free tier that doesn't require a credit card and 
    ```bash
    curl -fsSL https://raw.githubusercontent.com/rajhodedara/nuvio-deploy/master/alwaysdata.sh -o start.sh
    ```
-3. Go to **Web > Sites** and click **Add a site**.
+3. Go to **Web > Sites** and click the **Settings (⚙️)** icon next to your default site.
 4. Set the **Type** to `Node.js` and the **Command** to `bash start.sh`. Leave the working directory blank and submit!
 5. Add `https://[YOUR_ACCOUNT_NAME].alwaysdata.net/manifest.json` to Stremio.
 
