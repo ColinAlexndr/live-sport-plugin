@@ -1301,8 +1301,8 @@ var require_node = __commonJS({
           }
           break;
         case "FILE":
-          var fs2 = require("fs");
-          stream2 = new fs2.SyncWriteStream(fd2, { autoClose: false });
+          var fs = require("fs");
+          stream2 = new fs.SyncWriteStream(fd2, { autoClose: false });
           stream2._type = "fs";
           break;
         case "PIPE":
@@ -18500,7 +18500,7 @@ var require_view = __commonJS({
     "use strict";
     var debug7 = require_src()("express:view");
     var path2 = require("path");
-    var fs2 = require("fs");
+    var fs = require("fs");
     var dirname = path2.dirname;
     var basename = path2.basename;
     var extname = path2.extname;
@@ -18566,7 +18566,7 @@ var require_view = __commonJS({
     function tryStat(path3) {
       debug7('stat "%s"', path3);
       try {
-        return fs2.statSync(path3);
+        return fs.statSync(path3);
       } catch (e) {
         return void 0;
       }
@@ -18921,7 +18921,7 @@ var require_types = __commonJS({
 var require_mime = __commonJS({
   "node_modules/mime/mime.js"(exports2, module2) {
     var path2 = require("path");
-    var fs2 = require("fs");
+    var fs = require("fs");
     function Mime() {
       this.types = /* @__PURE__ */ Object.create(null);
       this.extensions = /* @__PURE__ */ Object.create(null);
@@ -18942,7 +18942,7 @@ var require_mime = __commonJS({
     };
     Mime.prototype.load = function(file) {
       this._loading = file;
-      var map = {}, content = fs2.readFileSync(file, "ascii"), lines = content.split(/[\r\n]+/);
+      var map = {}, content = fs.readFileSync(file, "ascii"), lines = content.split(/[\r\n]+/);
       lines.forEach(function(line) {
         var fields = line.replace(/\s*#.*|^\s*|\s*$/g, "").split(/\s+/);
         map[fields.shift()] = fields;
@@ -19180,7 +19180,7 @@ var require_send = __commonJS({
     var escapeHtml = require_escape_html();
     var etag = require_etag();
     var fresh = require_fresh();
-    var fs2 = require("fs");
+    var fs = require("fs");
     var mime = require_mime();
     var ms = require_ms2();
     var onFinished = require_on_finished();
@@ -19513,7 +19513,7 @@ var require_send = __commonJS({
       var i = 0;
       var self2 = this;
       debug7('stat "%s"', path3);
-      fs2.stat(path3, function onstat(err, stat) {
+      fs.stat(path3, function onstat(err, stat) {
         if (err && err.code === "ENOENT" && !extname(path3) && path3[path3.length - 1] !== sep) {
           return next(err);
         }
@@ -19528,7 +19528,7 @@ var require_send = __commonJS({
         }
         var p = path3 + "." + self2._extensions[i++];
         debug7('stat "%s"', p);
-        fs2.stat(p, function(err2, stat) {
+        fs.stat(p, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
           self2.emit("file", p, stat);
@@ -19546,7 +19546,7 @@ var require_send = __commonJS({
         }
         var p = join(path3, self2._index[i]);
         debug7('stat "%s"', p);
-        fs2.stat(p, function(err2, stat) {
+        fs.stat(p, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
           self2.emit("file", p, stat);
@@ -19558,7 +19558,7 @@ var require_send = __commonJS({
     SendStream.prototype.stream = function stream(path3, options) {
       var self2 = this;
       var res = this.res;
-      var stream2 = fs2.createReadStream(path3, options);
+      var stream2 = fs.createReadStream(path3, options);
       this.emit("stream", stream2);
       stream2.pipe(res);
       function cleanup() {
@@ -25290,7 +25290,7 @@ var require_is_wsl = __commonJS({
   "node_modules/is-wsl/index.js"(exports2, module2) {
     "use strict";
     var os = require("os");
-    var fs2 = require("fs");
+    var fs = require("fs");
     var isWsl = () => {
       if (process.platform !== "linux") {
         return false;
@@ -25299,7 +25299,7 @@ var require_is_wsl = __commonJS({
         return true;
       }
       try {
-        return fs2.readFileSync("/proc/version", "utf8").includes("Microsoft");
+        return fs.readFileSync("/proc/version", "utf8").includes("Microsoft");
       } catch (err) {
         return false;
       }
@@ -25396,7 +25396,7 @@ var require_opn = __commonJS({
 var require_serveHTTP = __commonJS({
   "node_modules/stremio-addon-sdk/src/serveHTTP.js"(exports2, module2) {
     var express2 = require_express2();
-    var fs2 = require("fs");
+    var fs = require("fs");
     var path2 = require("path");
     var landingTemplate = require_landingTemplate();
     var getRouter2 = require_getRouter();
@@ -25417,7 +25417,7 @@ var require_serveHTTP = __commonJS({
       app2.use(getRouter2(addonInterface));
       if (opts.static) {
         const location = path2.join(process.cwd(), opts.static);
-        if (!fs2.existsSync(location)) throw new Error("directory to serve does not exist");
+        if (!fs.existsSync(location)) throw new Error("directory to serve does not exist");
         app2.use(opts.static, express2.static(location));
       }
       const hasConfig = !!(addonInterface.manifest.config || []).length;
@@ -34700,8 +34700,8 @@ var require_utils6 = __commonJS({
     exports2.array = array;
     var errno = require_errno();
     exports2.errno = errno;
-    var fs2 = require_fs();
-    exports2.fs = fs2;
+    var fs = require_fs();
+    exports2.fs = fs;
     var path2 = require_path();
     exports2.path = path2;
     var pattern = require_pattern();
@@ -34885,12 +34885,12 @@ var require_fs2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.createFileSystemAdapter = exports2.FILE_SYSTEM_ADAPTER = void 0;
-    var fs2 = require("fs");
+    var fs = require("fs");
     exports2.FILE_SYSTEM_ADAPTER = {
-      lstat: fs2.lstat,
-      stat: fs2.stat,
-      lstatSync: fs2.lstatSync,
-      statSync: fs2.statSync
+      lstat: fs.lstat,
+      stat: fs.stat,
+      lstatSync: fs.lstatSync,
+      statSync: fs.statSync
     };
     function createFileSystemAdapter(fsMethods) {
       if (fsMethods === void 0) {
@@ -34907,12 +34907,12 @@ var require_settings = __commonJS({
   "node_modules/@nodelib/fs.stat/out/settings.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var fs2 = require_fs2();
+    var fs = require_fs2();
     var Settings = class {
       constructor(_options = {}) {
         this._options = _options;
         this.followSymbolicLink = this._getValue(this._options.followSymbolicLink, true);
-        this.fs = fs2.createFileSystemAdapter(this._options.fs);
+        this.fs = fs.createFileSystemAdapter(this._options.fs);
         this.markSymbolicLink = this._getValue(this._options.markSymbolicLink, false);
         this.throwErrorOnBrokenSymbolicLink = this._getValue(this._options.throwErrorOnBrokenSymbolicLink, true);
       }
@@ -35067,8 +35067,8 @@ var require_utils7 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.fs = void 0;
-    var fs2 = require_fs3();
-    exports2.fs = fs2;
+    var fs = require_fs3();
+    exports2.fs = fs;
   }
 });
 
@@ -35263,14 +35263,14 @@ var require_fs4 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.createFileSystemAdapter = exports2.FILE_SYSTEM_ADAPTER = void 0;
-    var fs2 = require("fs");
+    var fs = require("fs");
     exports2.FILE_SYSTEM_ADAPTER = {
-      lstat: fs2.lstat,
-      stat: fs2.stat,
-      lstatSync: fs2.lstatSync,
-      statSync: fs2.statSync,
-      readdir: fs2.readdir,
-      readdirSync: fs2.readdirSync
+      lstat: fs.lstat,
+      stat: fs.stat,
+      lstatSync: fs.lstatSync,
+      statSync: fs.statSync,
+      readdir: fs.readdir,
+      readdirSync: fs.readdirSync
     };
     function createFileSystemAdapter(fsMethods) {
       if (fsMethods === void 0) {
@@ -35289,12 +35289,12 @@ var require_settings2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var path2 = require("path");
     var fsStat = require_out();
-    var fs2 = require_fs4();
+    var fs = require_fs4();
     var Settings = class {
       constructor(_options = {}) {
         this._options = _options;
         this.followSymbolicLinks = this._getValue(this._options.followSymbolicLinks, false);
-        this.fs = fs2.createFileSystemAdapter(this._options.fs);
+        this.fs = fs.createFileSystemAdapter(this._options.fs);
         this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path2.sep);
         this.stats = this._getValue(this._options.stats, false);
         this.throwErrorOnBrokenSymbolicLink = this._getValue(this._options.throwErrorOnBrokenSymbolicLink, true);
@@ -36675,16 +36675,16 @@ var require_settings4 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DEFAULT_FILE_SYSTEM_ADAPTER = void 0;
-    var fs2 = require("fs");
+    var fs = require("fs");
     var os = require("os");
     var CPU_COUNT = Math.max(os.cpus().length, 1);
     exports2.DEFAULT_FILE_SYSTEM_ADAPTER = {
-      lstat: fs2.lstat,
-      lstatSync: fs2.lstatSync,
-      stat: fs2.stat,
-      statSync: fs2.statSync,
-      readdir: fs2.readdir,
-      readdirSync: fs2.readdirSync
+      lstat: fs.lstat,
+      lstatSync: fs.lstatSync,
+      stat: fs.stat,
+      statSync: fs.statSync,
+      readdir: fs.readdir,
+      readdirSync: fs.readdirSync
     };
     var Settings = class {
       constructor(_options = {}) {
@@ -41678,7 +41678,7 @@ var require_form_data = __commonJS({
     var http = require("http");
     var https = require("https");
     var parseUrl = require("url").parse;
-    var fs2 = require("fs");
+    var fs = require("fs");
     var Stream = require("stream").Stream;
     var crypto = require("crypto");
     var mime = require_mime_types();
@@ -41748,7 +41748,7 @@ var require_form_data = __commonJS({
         if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
           callback(null, value.end + 1 - (value.start ? value.start : 0));
         } else {
-          fs2.stat(value.path, function(err, stat) {
+          fs.stat(value.path, function(err, stat) {
             if (err) {
               callback(err);
               return;
@@ -106171,7 +106171,7 @@ ${line.slice(curr + 1)}`;
 // src/services/YamlProviderBuilder.js
 var require_YamlProviderBuilder = __commonJS({
   "src/services/YamlProviderBuilder.js"(exports2, module2) {
-    var fs2 = require("fs");
+    var fs = require("fs");
     var path2 = require("path");
     var yaml = require_js_yaml_cjs();
     var cheerio = require_commonjs4();
@@ -106235,14 +106235,14 @@ var require_YamlProviderBuilder = __commonJS({
       }
       buildProviders(container2, circuitBreaker) {
         const yamlDir = path2.join(__dirname, "..", "providers", "yaml");
-        if (!fs2.existsSync(yamlDir)) {
-          fs2.mkdirSync(yamlDir, { recursive: true });
+        if (!fs.existsSync(yamlDir)) {
+          fs.mkdirSync(yamlDir, { recursive: true });
         }
-        const files = fs2.readdirSync(yamlDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
+        const files = fs.readdirSync(yamlDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
         const generatedProviders = [];
         files.forEach((file) => {
           try {
-            const fileContents = fs2.readFileSync(path2.join(yamlDir, file), "utf8");
+            const fileContents = fs.readFileSync(path2.join(yamlDir, file), "utf8");
             const config = yaml.load(fileContents);
             if (config && config.name && config.baseUrl && config.selectors) {
               const providerInstance = new GenericYamlProvider({ circuitBreaker }, config);
@@ -106816,10 +106816,7 @@ var { handleStream } = require_streams4();
 var { PORT, BASE_URL } = require_config();
 var container = require_container2();
 var RESOLVER_PORT = process.env.RESOLVER_PORT || "3000";
-var fs = require("fs");
-var bundledResolver = path.join(__dirname, "resolver.mjs");
-var sourceResolver = path.join(__dirname, "..", "resolver", "src", "server.js");
-var resolverPath = fs.existsSync(bundledResolver) ? bundledResolver : sourceResolver;
+var resolverPath = path.join(__dirname, "..", "resolver", "src", "server.js");
 var resolverProcess = null;
 var isShuttingDown = false;
 function spawnResolver() {
