@@ -13,4 +13,5 @@ for pkg in big-integer happy-dom; do
 done
 
 echo "Starting server..."
-node dist/index.js
+# Force V8 to garbage collect before hitting Alwaysdata's ~100MB OS limit
+NODE_OPTIONS="--max-old-space-size=70" node dist/index.js

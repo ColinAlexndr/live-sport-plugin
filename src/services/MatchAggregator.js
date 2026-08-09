@@ -27,15 +27,14 @@ class MatchAggregator {
   async syncMatches() {
     console.log('[MatchAggregator] Fetching from all providers...');
     
-    // Fetch all providers in parallel
-    const results = await Promise.allSettled(this.providers.map(p => p.getMatches()));
-    
     const finalMatches = [];
 
-    // Map arrays into dictionaries for easier merging
-    results.forEach((promiseResult, providerIndex) => {
-      if (promiseResult.status === 'fulfilled') {
-        const providerMatches = promiseResult.value;
+    // Fetch and merge providers sequentially to keep peak memory footprint low (for Alwaysdata)
+    for (const p of this.providers) {
+      try {
+        const providerMatches = await p.getMatches();
+        if (!providerMatches || !Array.isArray(providerMatches)) continue;
+
         providerMatches.forEach(match => {
           if (!match.id || !match.title) return;
           
@@ -58,13 +57,16 @@ class MatchAggregator {
             }
             // Prefer metadata if existing lacks it
             if (!existing.poster && match.poster) existing.poster = match.poster;
+            if (existing.description === 'No description' && match.description && match.description !== 'No description') {
+              existing.description = match.description;
+            }
             if (!existing.logo && match.logo) existing.logo = match.logo;
           }
         });
-      } else {
-        console.error(`[MatchAggregator] Provider ${providerIndex} failed:`, promiseResult.reason);
+      } catch (err) {
+        console.error(`[MatchAggregator] Provider fetch failed:`, err.message);
       }
-    });
+    }
     
     const now = Date.now();
     // Smart Trending Engine: Boost popular matches globally, but only if they are actually live or starting soon

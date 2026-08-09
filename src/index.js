@@ -39,7 +39,7 @@ function spawnResolver() {
   console.log(`Starting Stream Resolver at ${resolverPath} on port ${RESOLVER_PORT}...`);
   resolverProcess = spawn('node', [resolverPath], {
     stdio: 'inherit',
-    env: { ...process.env, PORT: RESOLVER_PORT, HOST: '127.0.0.1', BASE_URL: BASE_URL }
+    env: { ...process.env, PORT: RESOLVER_PORT, HOST: '127.0.0.1', BASE_URL: BASE_URL, NODE_OPTIONS: '--max-old-space-size=30' }
   });
   
   resolverProcess.on('error', (err) => console.error('[FATAL] Resolver spawn error:', err));

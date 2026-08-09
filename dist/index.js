@@ -50669,11 +50669,11 @@ var require_MatchAggregator = __commonJS({
       }
       async syncMatches() {
         console.log("[MatchAggregator] Fetching from all providers...");
-        const results = await Promise.allSettled(this.providers.map((p) => p.getMatches()));
         const finalMatches = [];
-        results.forEach((promiseResult, providerIndex) => {
-          if (promiseResult.status === "fulfilled") {
-            const providerMatches = promiseResult.value;
+        for (const p of this.providers) {
+          try {
+            const providerMatches = await p.getMatches();
+            if (!providerMatches || !Array.isArray(providerMatches)) continue;
             providerMatches.forEach((match) => {
               if (!match.id || !match.title) return;
               const existing = finalMatches.find((m) => this.isSameEvent(m, match));
@@ -50691,13 +50691,16 @@ var require_MatchAggregator = __commonJS({
                   existing.popular = "1";
                 }
                 if (!existing.poster && match.poster) existing.poster = match.poster;
+                if (existing.description === "No description" && match.description && match.description !== "No description") {
+                  existing.description = match.description;
+                }
                 if (!existing.logo && match.logo) existing.logo = match.logo;
               }
             });
-          } else {
-            console.error(`[MatchAggregator] Provider ${providerIndex} failed:`, promiseResult.reason);
+          } catch (err) {
+            console.error(`[MatchAggregator] Provider fetch failed:`, err.message);
           }
-        });
+        }
         const now = Date.now();
         const TRENDING_KEYWORDS = ["real madrid", "barcelona", "manchester", "arsenal", "liverpool", "chelsea", "bayern", "psg", "lakers", "warriors", "mcgregor", "super bowl", "champions league", "el clasico", "f1", "formula 1", "grand prix"];
         finalMatches.forEach((match) => {
@@ -106824,7 +106827,7 @@ function spawnResolver() {
   console.log(`Starting Stream Resolver at ${resolverPath} on port ${RESOLVER_PORT}...`);
   resolverProcess = spawn("node", [resolverPath], {
     stdio: "inherit",
-    env: { ...process.env, PORT: RESOLVER_PORT, HOST: "127.0.0.1", BASE_URL }
+    env: { ...process.env, PORT: RESOLVER_PORT, HOST: "127.0.0.1", BASE_URL, NODE_OPTIONS: "--max-old-space-size=30" }
   });
   resolverProcess.on("error", (err) => console.error("[FATAL] Resolver spawn error:", err));
   resolverProcess.on("exit", (code, signal) => {
