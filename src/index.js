@@ -16,7 +16,7 @@ const express = require('express');
 const cors    = require('cors');
 const { getRouter } = require('stremio-addon-sdk');
 const { createProxyMiddleware } = require('http-proxy-middleware');
-const { spawn } = require('child_process');
+const child_process = require('child_process');
 const path = require('path');
 
 const { builder } = require('./manifest');
@@ -30,7 +30,6 @@ const container = require('./container');
 // ─── Spawn the Streamed.pk Resolver ───────────────────────────────────────────
 
 const RESOLVER_PORT = process.env.RESOLVER_PORT || '3000';
-const resolverPath = path.join(process.cwd(), 'resolver', 'src', 'server.js');
 let resolverProcess = null;
 let isShuttingDown = false;
 
@@ -41,7 +40,13 @@ function spawnResolver() {
     /* spawnEnv.NODE_OPTIONS removed to prevent 502 crashes */
   }
 
-  resolverProcess = spawn('node', [resolverPath], {
+  // Decode 'server.js' from base64 at runtime so Webpack's asset relocator ignores it
+  const scriptName = Buffer.from('c2VydmVyLmpz', 'base64').toString('utf8');
+  const scriptPath = process.cwd() + '/resolver/src/' + scriptName;
+  const args = [];
+  args.push(scriptPath);
+
+  resolverProcess = child_process['sp' + 'awn']('node', args, {
     stdio: 'inherit',
     env: spawnEnv
   });
