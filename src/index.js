@@ -29,7 +29,8 @@ const container = require('./container');
 
 // ─── Spawn the Streamed.pk Resolver ───────────────────────────────────────────
 
-const RESOLVER_PORT = process.env.RESOLVER_PORT || '3000';
+// Use a dynamic random port between 20000-60000 for the internal resolver to prevent EADDRINUSE on shared hosts
+const RESOLVER_PORT = process.env.RESOLVER_PORT || String(Math.floor(Math.random() * 40000) + 20000);
 let resolverProcess = null;
 let isShuttingDown = false;
 
