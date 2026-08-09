@@ -1,12 +1,5 @@
 import { fetchHeaders } from './headers.js'
-import { Agent, setGlobalDispatcher } from 'undici'
-
-// Use a shared Keep-Alive agent for native fetch to prevent tearing down TCP connections
-setGlobalDispatcher(new Agent({
-  keepAliveTimeout: 60000, // 1 minute
-  keepAliveMaxTimeout: 600000,
-  connections: 500
-}))
+// Node v22+ ships with built-in fetch & connection pooling — no external undici needed
 
 function hdrs(slot) {
   const referer = slot.referer || `${slot.origin}/`

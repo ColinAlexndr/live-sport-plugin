@@ -5,7 +5,7 @@
 echo "Nuvio Live Sports Plugin — zero-install launcher"
 
 # Install resolver deps one-at-a-time (tiny packages, won't OOM)
-for pkg in undici big-integer happy-dom; do
+for pkg in big-integer happy-dom; do
   if [ ! -d "node_modules/$pkg" ]; then
     echo "Installing resolver dependency: $pkg..."
     npm install --no-save --no-audit --no-fund --loglevel=error "$pkg" 2>/dev/null
