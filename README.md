@@ -64,8 +64,14 @@ Alwaysdata offers a completely free 100MB tier without a credit card. While 100M
    *(The `--max-old-space-size=70` flag is required so Node.js garbage collector triggers early, preventing the strict 100MB Alwaysdata limit from instantly killing your app (`SIGKILL 137`)).*
 7. Go to the public URL provided by Alwaysdata, configure your sports, and install it into Stremio/Nuvio!
 
-### Option 3: Other Free Cloud Platforms
-If you have a credit card for verification, or find other free hosts, you can deploy this app as a standard Node.js web service. We recommend a host with at least **512MB RAM** for a completely stable experience (e.g., Koyeb, Render, Railway, Serv00).
+### Option 3: 1-Click Deploy (Easiest Method)
+You can deploy this instantly to cloud providers that offer generous free tiers (512MB RAM). No coding required!
+
+**Deploy to Koyeb (Recommended, Always-On, Free):**
+[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/rajhodedara/live-sport-plugin&branch=main&name=nuvio-live-sports)
+
+**Deploy to Render (Free, 15m idle sleep):**
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/rajhodedara/live-sport-plugin)
 
 ---
 
