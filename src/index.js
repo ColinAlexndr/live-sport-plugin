@@ -219,18 +219,11 @@ app.get('/:config?/manifest.json', (req, res, next) => {
     const keepCatalogs = ['nuvio_sports_live', 'nuvio_sports_networks', 'nuvio_sports_upcoming', 'nuvio_sports_teams'];
     
     // Add specific catalogs based on selection
-    if (enabledSports.includes('football')) keepCatalogs.push('nuvio_sports_football');
-    if (enabledSports.includes('cricket')) keepCatalogs.push('nuvio_sports_cricket');
-    if (enabledSports.includes('motorsport')) keepCatalogs.push('nuvio_sports_motorsport');
-    if (enabledSports.includes('hockey')) keepCatalogs.push('nuvio_sports_hockey');
-    if (enabledSports.includes('baseball')) keepCatalogs.push('nuvio_sports_baseball');
-    
-    // "Other Sports" contains these genres
-    const otherSports = ['basketball', 'american_football', 'rugby', 'other'];
-    const hasOther = enabledSports.some(s => otherSports.includes(s));
-    if (hasOther) {
-      keepCatalogs.push('nuvio_sports_other');
+    const sportCatalogs = ['football', 'cricket', 'basketball', 'motorsport', 'hockey', 'baseball', 'mma', 'golf', 'tennis', 'rugby', 'american_football', 'darts'];
+    for (const sport of sportCatalogs) {
+      if (enabledSports.includes(sport)) keepCatalogs.push(`nuvio_sports_${sport}`);
     }
+    if (enabledSports.includes('other')) keepCatalogs.push('nuvio_sports_other');
     
     newManifest.catalogs = newManifest.catalogs.filter(c => keepCatalogs.includes(c.id));
   }

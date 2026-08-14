@@ -179,18 +179,8 @@ async function handleCatalog(type, id, extra, config) {
       filteredMatches = []; // If no config, return empty
     }
   } else if (categoryMatch === 'other') {
-    const topLevelCats = ['football', 'cricket', 'motorsport', 'networks', 'hockey', 'baseball'];
+    const topLevelCats = ['football', 'cricket', 'basketball', 'motorsport', 'hockey', 'baseball', 'mma', 'golf', 'tennis', 'rugby', 'american_football', 'darts', 'networks'];
     filteredMatches = matches.filter(m => !topLevelCats.includes(m.category));
-    
-    if (extra && extra.genre) {
-      const genre = extra.genre.toLowerCase().replace(' ', '_');
-      if (genre === 'other') {
-        const knownSubCats = ['basketball', 'mma', 'golf', 'tennis', 'rugby', 'american_football', 'baseball', 'hockey', 'darts'];
-        filteredMatches = filteredMatches.filter(m => !knownSubCats.includes(m.category));
-      } else {
-        filteredMatches = filteredMatches.filter(m => m.category === genre);
-      }
-    }
   } else if (categoryMatch !== 'catalog') {
     filteredMatches = matches.filter(m => m.category === categoryMatch);
   }
