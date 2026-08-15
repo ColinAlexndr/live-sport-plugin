@@ -55,7 +55,7 @@ class TimStreamsProvider extends BaseProvider {
         }
       });
     } catch (error) {
-      console.error(`[${this.name}] Error fetching matches:`, error.message);
+      console.error(`[${this.name}] Error fetching matches:`, error.stack);
     }
     return matches;
   }
