@@ -73,25 +73,6 @@ class StreamFreeProvider extends BaseProvider {
     try {
       const embedUrl = `https://streamfree.top/embed/${matchCategory}/${sourceId}`;
       
-      const cfProxyUrl = process.env.CF_PROXY_URL;
-      if (cfProxyUrl) {
-          console.log(`[Proxy] Using CF edge-scraper for StreamFree match: ${sourceId}`);
-          const proxyUrl = new URL(cfProxyUrl);
-          proxyUrl.searchParams.set('action', 'streamfree');
-          proxyUrl.searchParams.set('embedUrl', embedUrl);
-          proxyUrl.searchParams.set('streamId', sourceId);
-          proxyUrl.searchParams.set('referer', 'https://streamfree.top/');
-          proxyUrl.searchParams.set('origin', 'https://streamfree.top');
-          
-          return [new StreamEntity({
-            name: 'StreamFree',
-            title: `StreamFree (Auto)`,
-            url: proxyUrl.toString() + '&ext=.m3u8',
-            resolution: 'HD'
-          })];
-      }
-
-      // FALLBACK: If no CF Proxy is configured, scrape internally (uses Render bandwidth)
       const html = await this.embedFetcher.fire(embedUrl);
       if (!html) return [];
 
