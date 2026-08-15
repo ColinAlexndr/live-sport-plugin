@@ -36,6 +36,58 @@ class BaseProvider {
   }
 
   /**
+   * Fetch wrapper that routes through Cloudflare proxy if configured
+   */
+  async proxyFetch(url, options = {}) {
+    const cfProxyUrl = process.env.CF_PROXY_URL;
+    if (cfProxyUrl) {
+      const proxyUrl = new URL(cfProxyUrl);
+      proxyUrl.searchParams.set('url', url);
+      
+      if (options.headers) {
+        let referer, origin;
+        if (options.headers instanceof Headers) {
+          referer = options.headers.get('referer') || options.headers.get('Referer');
+          origin = options.headers.get('origin') || options.headers.get('Origin');
+        } else {
+          referer = options.headers.referer || options.headers.Referer;
+          origin = options.headers.origin || options.headers.Origin;
+        }
+        
+        if (referer) proxyUrl.searchParams.set('referer', referer);
+        if (origin) proxyUrl.searchParams.set('origin', origin);
+      }
+      
+      url = proxyUrl.toString();
+    }
+    
+    return fetch(url, options);
+  }
+
+  /**
+   * Get the proxy URL for a stream
+   */
+  getStreamProxyUrl(streamUrl, referer, origin) {
+    const cfProxyUrl = process.env.CF_PROXY_URL;
+    if (cfProxyUrl) {
+      const proxyUrl = new URL(cfProxyUrl);
+      proxyUrl.searchParams.set('url', streamUrl);
+      if (referer) proxyUrl.searchParams.set('referer', referer);
+      if (origin) proxyUrl.searchParams.set('origin', origin);
+      // Append .m3u8 to the end of the URL so mobile players recognize it as an HLS stream
+      return proxyUrl.toString() + '&ext=.m3u8';
+    }
+    
+    // Fallback to internal relay
+    let internalProxy = `/api/hls/${encodeURIComponent(streamUrl)}/stream.m3u8`;
+    const q = new URLSearchParams();
+    q.set('url', streamUrl);
+    if (referer) q.set('referer', referer);
+    if (origin) q.set('embedOrigin', origin);
+    return `/api/hls/playlist.m3u8?${q.toString()}`;
+  }
+
+  /**
    * Helper to normalize strings for fuzzy matching
    */
   normalizeStr(str) {

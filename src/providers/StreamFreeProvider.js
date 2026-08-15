@@ -8,24 +8,33 @@ class StreamFreeProvider extends BaseProvider {
     this.name = 'StreamFree';
     this.apiUrl = 'https://streamfree.top/streams';
     // Wrap the fetch with our circuit breaker
-    this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async () => {
-      const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' };
-      const res = await fetch(this.apiUrl, { headers, signal: AbortSignal.timeout(7000) });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return await res.json();
-    });
-    this.embedFetcher = this.circuitBreaker.wrap(`${this.name}_embed`, async (url) => {
-      const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' };
-      const res = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return await res.text();
-    });
-    this.streamKeyFetcher = this.circuitBreaker.wrap(`${this.name}_streamKey`, async (url) => {
-      const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' };
-      const res = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return await res.json();
-    });
+    this.fetchData = this.circuitBreaker.wrap(
+      this.name + '_fetchMain',
+      async () => {
+        const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' };
+        const res = await this.proxyFetch(this.apiUrl, { headers, signal: AbortSignal.timeout(7000) });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+      }
+    );
+    this.embedFetcher = this.circuitBreaker.wrap(
+      this.name + '_fetchEmbed',
+      async (url) => {
+        const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' };
+        const res = await this.proxyFetch(url, { headers, signal: AbortSignal.timeout(10000) });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.text();
+      }
+    );
+    this.streamKeyFetcher = this.circuitBreaker.wrap(
+      this.name + '_fetchStreamKey',
+      async (url) => {
+        const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' };
+        const res = await this.proxyFetch(url, { headers, signal: AbortSignal.timeout(10000) });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+      }
+    );
   }
 
   async getMatches() {
@@ -104,10 +113,11 @@ class StreamFreeProvider extends BaseProvider {
       
       const targetUrl = `${baseUrl}?_t=${t._t}&_e=${t._e}&_n=${t._n}`;
 
+      console.log(`[Proxy] Using CF proxy (or internal) for StreamFree match: ${sourceId}`);
       return [new StreamEntity({
-        name: 'StreamFree Direct',
+        name: 'StreamFree',
         title: `StreamFree (${bestQuality})`,
-        url: `/api/hls/playlist.m3u8?url=${encodeURIComponent(targetUrl)}&origin=${encodeURIComponent('https://streamfree.top')}&referer=${encodeURIComponent('https://streamfree.top/')}`, 
+        url: this.getStreamProxyUrl(targetUrl, 'https://streamfree.top/', 'https://streamfree.top'),
         resolution: bestQuality
       })];
     } catch (error) {

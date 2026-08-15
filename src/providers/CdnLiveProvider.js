@@ -10,7 +10,7 @@ class CdnLiveProvider extends BaseProvider {
     
     this.fetchMain = this.circuitBreaker.wrap(`${this.name}_fetchMain`, async () => {
       const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' };
-      const res = await fetch(this.apiUrl, { headers, signal: AbortSignal.timeout(20000) });
+      const res = await this.proxyFetch(this.apiUrl, { headers, signal: AbortSignal.timeout(20000) });
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return await res.json();
     });
@@ -68,10 +68,11 @@ class CdnLiveProvider extends BaseProvider {
       if (item && item.channels && Array.isArray(item.channels)) {
         item.channels.forEach((ch, idx) => {
           if (ch.url) {
+            console.log(`[Proxy] Using proxy for CDNLiveTV channel: ${ch.channel_name || idx}`);
             streams.push(new StreamEntity({
               name: `CDNLiveTV`,
               title: ch.channel_name || `CDNLive Stream ${idx + 1}`,
-              url: ch.url,
+              url: this.getStreamProxyUrl(ch.url, 'https://cdnlivetv.tv/', 'https://cdnlivetv.tv'),
               resolution: 'HD'
             }));
           }

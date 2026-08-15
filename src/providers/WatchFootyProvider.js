@@ -10,7 +10,7 @@ class WatchFootyProvider extends BaseProvider {
     
     this.fetchMain = this.circuitBreaker.wrap(`${this.name}_fetchMain`, async () => {
       const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' };
-      const res = await fetch(this.apiUrl, { headers, signal: AbortSignal.timeout(10000) });
+      const res = await this.proxyFetch(this.apiUrl, { headers, signal: AbortSignal.timeout(10000) });
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return await res.json();
     });
@@ -18,7 +18,7 @@ class WatchFootyProvider extends BaseProvider {
     this.fetchMatchDetails = this.circuitBreaker.wrap(`${this.name}_fetchMatch`, async (matchId) => {
       const url = `https://api.watchfooty.st/api/v1/match/${matchId}`;
       const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' };
-      const res = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+      const res = await this.proxyFetch(url, { headers, signal: AbortSignal.timeout(10000) });
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return await res.json();
     });
@@ -79,7 +79,8 @@ class WatchFootyProvider extends BaseProvider {
             };
             
             if (isDirect) {
-              entityParams.url = s.url;
+              console.log(`[Proxy] Using proxy for WatchFooty stream: ${idx + 1}`);
+              entityParams.url = this.getStreamProxyUrl(s.url, 'https://watchfooty.st/', 'https://watchfooty.st');
             } else {
               entityParams.externalUrl = `/watch?url=${encodeURIComponent(s.url)}&title=${encodeURIComponent(matchTitle || 'WatchFooty')}`;
             }
