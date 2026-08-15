@@ -117,23 +117,6 @@ class StreamSports99Provider extends BaseProvider {
 
         for (const [idx, ch] of item.channels.entries()) {
           if (ch.url) {
-            // --- CF EDGE SCRAPER PATH ---
-            if (cfProxyUrl) {
-              console.log(`[Proxy] Using CF edge-scraper for SS99 channel: ${ch.channel_name || idx}`);
-              const proxyUrl = new URL(cfProxyUrl);
-              proxyUrl.searchParams.set('action', 'streamsports99');
-              proxyUrl.searchParams.set('playerUrl', ch.url);
-              proxyUrl.searchParams.set('referer', 'https://streamsports99.fun/');
-              proxyUrl.searchParams.set('origin', 'https://streamsports99.fun');
-              
-              streams.push(new StreamEntity({
-                name: 'StreamSports99',
-                title: ch.channel_name || `VIP Stream ${idx + 1}`,
-                url: proxyUrl.toString() + '&ext=.m3u8',
-                resolution: 'HD'
-              }));
-              continue;
-            }
 
             // --- INTERNAL FALLBACK ---
             try {
