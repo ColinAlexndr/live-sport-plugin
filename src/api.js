@@ -230,7 +230,7 @@ async function getAllMatches() {
 
   // 5. Fetch from TimStreams (vixnuvew API)
   try {
-    const tsRes = await axios.get('https://api.vixnuvew.uk/api/live-upcoming', { timeout: 7000 });
+    const tsRes = await axios.get('https://timstreams.st/api/live-upcoming', { timeout: 7000 });
     if (tsRes.data && Array.isArray(tsRes.data.events)) {
       const genres = tsRes.data.genres || {};
       

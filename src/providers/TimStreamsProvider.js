@@ -7,7 +7,7 @@ class TimStreamsProvider extends BaseProvider {
   constructor(opts) {
     super(opts);
     this.name = 'TimStreams';
-    this.apiUrl = 'https://api.vixnuvew.uk/api/live-upcoming';
+    this.apiUrl = 'https://timstreams.st/api/live-upcoming';
     
     this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async () => {
       const res = await axios.get(this.apiUrl, { timeout: 7000 });
