@@ -12,8 +12,13 @@ function normalizeCategory(cat) {
   if (cat.includes('fight') || cat.includes('mma') || cat.includes('boxing') || cat.includes('wrestling') || cat.includes('knuckle') || cat.includes('ufc')) return 'mma';
   if (cat.includes('basketball') || cat.includes('nba')) return 'basketball';
   if (cat.includes('golf')) return 'golf';
-  if (cat.includes('liveshow') || cat.includes('uncategorized')) return 'other';
   if (cat.includes('rugby')) return 'rugby';
+  if (cat.includes('cricket')) return 'cricket';
+  if (cat.includes('tennis')) return 'tennis';
+  if (cat.includes('hockey')) return 'hockey';
+  if (cat.includes('baseball')) return 'baseball';
+  if (cat.includes('darts')) return 'darts';
+  if (cat.includes('liveshow') || cat.includes('uncategorized')) return 'other';
   return cat;
 }
 
