@@ -93,7 +93,12 @@ export default {
       try {
         const playerUrl = reqUrl.searchParams.get('playerUrl');
         
-        const playerRes = await fetch(playerUrl, { headers: newHeaders });
+        // Use clean headers - cdnlivetv.tv blocks requests with extra proxy headers
+        const ss99Headers = new Headers();
+        ss99Headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36');
+        ss99Headers.set('Referer', 'https://streamsports99.fun/');
+        
+        const playerRes = await fetch(playerUrl, { headers: ss99Headers });
         const html = await playerRes.text();
         
         // Find the decoder function (contains atob)
