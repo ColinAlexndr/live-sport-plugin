@@ -79,18 +79,7 @@ class WatchFootyProvider extends BaseProvider {
             };
             
             if (isDirect) {
-              console.log(`[Zero Bandwidth] Bypassing proxy! Handing direct CDN URL to client for WatchFooty stream: ${idx + 1}`);
               entityParams.url = s.url;
-              entityParams.behaviorHints = {
-                notWebReady: true,
-                proxyHeaders: {
-                  request: {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    "Origin": "https://watchfooty.st",
-                    "Referer": "https://watchfooty.st/"
-                  }
-                }
-              };
             } else {
               entityParams.externalUrl = `/watch?url=${encodeURIComponent(s.url)}&title=${encodeURIComponent(matchTitle || 'WatchFooty')}`;
             }

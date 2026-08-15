@@ -41,7 +41,6 @@ class StreamSports99Provider extends BaseProvider {
 
   async getMatches() {
     const matches = [];
-
     try {
       const data = await this.fetchMain.fire();
       const sportsData = data?.['cdn-live-tv'] || {};
@@ -88,6 +87,7 @@ class StreamSports99Provider extends BaseProvider {
   }
 
   async resolveStream(sourceId, matchCategory, matchTitle) {
+    const streams = [];
     try {
       const data = await this.fetchMain.fire();
       const sportsData = data?.['cdn-live-tv'] || {};
@@ -152,20 +152,13 @@ class StreamSports99Provider extends BaseProvider {
                     }
                     
                     if (m3u8Url) {
-                      console.log(`[Zero Bandwidth] Bypassing proxy! Handing direct CDN URL to client for StreamSports99 channel: ${ch.channel_name || idx}`);
+                      const embedPath = `streamsports99/${sourceId || 'match'}/stream${idx+1}`;
+                      const embedOrigin = 'https://streamsports99.fun';
+                      const proxiedUrl = `/api/hls/playlist.m3u8?url=${encodeURIComponent(m3u8Url)}&referer=${encodeURIComponent('https://streamsports99.fun/')}&embed=${encodeURIComponent(embedPath)}&embedOrigin=${encodeURIComponent(embedOrigin)}`;
                       streams.push(new StreamEntity({
                         name: `StreamSports99`,
                         title: ch.channel_name || `VIP Stream ${idx + 1}`,
-                        url: m3u8Url,
-                        behaviorHints: {
-                          notWebReady: true,
-                          proxyHeaders: {
-                            request: {
-                              "Origin": "https://streamsports99.fun",
-                              "Referer": "https://streamsports99.fun/"
-                            }
-                          }
-                        },
+                        url: proxiedUrl,
                         resolution: 'HD'
                       }));
                       continue; // move to next channel

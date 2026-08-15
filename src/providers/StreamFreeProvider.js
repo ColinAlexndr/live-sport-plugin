@@ -104,20 +104,10 @@ class StreamFreeProvider extends BaseProvider {
       
       const targetUrl = `${baseUrl}?_t=${t._t}&_e=${t._e}&_n=${t._n}`;
 
-      console.log(`[Zero Bandwidth] Bypassing proxy! Handing direct CDN URL to client for StreamFree match: ${sourceId}`);
       return [new StreamEntity({
         name: 'StreamFree Direct',
         title: `StreamFree (${bestQuality})`,
-        url: targetUrl,
-        behaviorHints: {
-          notWebReady: true,
-          proxyHeaders: {
-            request: {
-              "Origin": "https://streamfree.top",
-              "Referer": "https://streamfree.top/"
-            }
-          }
-        },
+        url: `/api/hls/playlist.m3u8?url=${encodeURIComponent(targetUrl)}&origin=${encodeURIComponent('https://streamfree.top')}&referer=${encodeURIComponent('https://streamfree.top/')}`, 
         resolution: bestQuality
       })];
     } catch (error) {
