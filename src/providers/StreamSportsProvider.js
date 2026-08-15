@@ -27,7 +27,7 @@ class StreamSportsProvider extends BaseProvider {
         matches.push(new MatchEntity({
           id: `streamsports_${m.id || index}`,
           title: m.title || m.name || `StreamSports Match ${index}`,
-          category: (m.sport || 'other').toLowerCase(),
+          category: this.normalizeCategory(m.sport),
           date: m.timestamp || m.date || null,
           popular: '0',
           sources: [{ source: 'streamsports', id: m.id || index, url: m.url || m.streamUrl }]

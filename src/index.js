@@ -186,27 +186,32 @@ app.use((req, res, next) => {
   next();
 });
 
+/**
+ * Decodes a config URL segment. Accepts URL-encoded JSON or base64url JSON.
+ * Returns null when the segment is not a valid config.
+ */
+function decodeConfigSegment(configStr) {
+  try {
+    if (configStr.startsWith('%7B') || configStr.startsWith('{')) {
+      return JSON.parse(decodeURIComponent(configStr));
+    }
+    let base64 = configStr.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+    return JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'));
+  } catch (e) {
+    return null;
+  }
+}
+
 // ─── Dynamic Manifest based on Config ─────────────────────────────────────────
 app.get('/:config?/manifest.json', (req, res, next) => {
   const { manifest } = require('./manifest');
-  let configStr = req.params.config;
   let parsedConfig = {};
-  if (configStr) {
-    try {
-      if (configStr.startsWith('%7B') || configStr.startsWith('{')) {
-        parsedConfig = JSON.parse(decodeURIComponent(configStr));
-      } else {
-        // Convert base64url back to standard base64
-        let base64 = configStr.replace(/-/g, '+').replace(/_/g, '/');
-        while (base64.length % 4) {
-          base64 += '=';
-        }
-        const decoded = Buffer.from(base64, 'base64').toString('utf-8');
-        parsedConfig = JSON.parse(decoded);
-      }
-    } catch (e) {
-      return next();
-    }
+  if (req.params.config) {
+    parsedConfig = decodeConfigSegment(req.params.config);
+    if (parsedConfig === null) return next();
   }
 
   // Clone manifest catalogs
@@ -237,6 +242,19 @@ app.get('/:config?/manifest.json', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Content-Type', 'application/json');
   res.send(newManifest);
+});
+
+// The SDK router JSON.parses the raw config segment. Nuvio installs use a
+// base64url config, so rewrite it to URL-encoded JSON before the SDK sees it.
+app.use((req, res, next) => {
+  const m = req.url.match(/^\/([A-Za-z0-9_-]+)(\/(?:catalog|meta|stream)\/.+)$/);
+  if (m && !m[1].startsWith('%7B')) {
+    const parsed = decodeConfigSegment(m[1]);
+    if (parsed !== null) {
+      req.url = `/${encodeURIComponent(JSON.stringify(parsed))}${m[2]}`;
+    }
+  }
+  next();
 });
 
 // Mount the Stremio addon router
