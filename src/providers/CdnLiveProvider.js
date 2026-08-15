@@ -68,10 +68,21 @@ class CdnLiveProvider extends BaseProvider {
       if (item && item.channels && Array.isArray(item.channels)) {
         item.channels.forEach((ch, idx) => {
           if (ch.url) {
+            console.log(`[Zero Bandwidth] Bypassing proxy! Handing direct CDN URL to client for CDNLiveTV channel: ${ch.channel_name || idx}`);
             streams.push(new StreamEntity({
               name: `CDNLiveTV`,
               title: ch.channel_name || `CDNLive Stream ${idx + 1}`,
               url: ch.url,
+              behaviorHints: {
+                notWebReady: true,
+                proxyHeaders: {
+                  request: {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Origin": "https://cdnlivetv.tv",
+                    "Referer": "https://cdnlivetv.tv/"
+                  }
+                }
+              },
               resolution: 'HD'
             }));
           }
