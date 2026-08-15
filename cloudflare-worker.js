@@ -46,7 +46,11 @@ export default {
         const embedUrl = reqUrl.searchParams.get('embedUrl');
         const streamId = reqUrl.searchParams.get('streamId');
         
-        const embedRes = await fetch(embedUrl, { headers: newHeaders });
+        // Use clean headers for embed fetch - StreamFree blocks requests with Referer to embed pages
+        const embedHeaders = new Headers();
+        embedHeaders.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36');
+        
+        const embedRes = await fetch(embedUrl, { headers: embedHeaders });
         const html = await embedRes.text();
         const match = html.match(/const\s+_0x\s*=\s*(\{.*?\});/);
         if (!match) return new Response("Proxy Error: Could not find token", { status: 502 });
