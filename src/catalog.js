@@ -153,13 +153,7 @@ async function handleCatalog(type, id, extra, config) {
   const matches = cacheService.getMatches();
   
   let filteredMatches = matches;
-  
-  if (conf.sports && conf.sports !== 'all') {
-    const allowedSports = conf.sports.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
-    // Don't filter out networks (24/7 TV) since they aren't tied to a specific sport
-    filteredMatches = filteredMatches.filter(m => m.category === 'networks' || allowedSports.includes(m.category) || allowedSports.includes('other'));
-  }
-  
+
   if (categoryMatch === 'live') {
     filteredMatches = matches.filter(m => m.popular === '1');
   } else if (categoryMatch === 'upcoming') {
@@ -169,7 +163,7 @@ async function handleCatalog(type, id, extra, config) {
       return m.popular === '0' && kickoff > now;
     });
   } else if (categoryMatch === 'teams') {
-    if (conf.teams) {
+    if (typeof conf.teams === 'string' && conf.teams.trim()) {
       const favoriteTeams = conf.teams.toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
       filteredMatches = matches.filter(m => {
         const titleWords = m.title.toLowerCase();
@@ -183,6 +177,12 @@ async function handleCatalog(type, id, extra, config) {
     filteredMatches = matches.filter(m => !topLevelCats.includes(m.category));
   } else if (categoryMatch !== 'catalog') {
     filteredMatches = matches.filter(m => m.category === categoryMatch);
+  }
+
+  if (typeof conf.sports === 'string' && conf.sports !== 'all') {
+    const allowedSports = conf.sports.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+    // Don't filter out networks (24/7 TV) since they aren't tied to a specific sport
+    filteredMatches = filteredMatches.filter(m => m.category === 'networks' || allowedSports.includes(m.category) || allowedSports.includes('other'));
   }
 
   filteredMatches = [...filteredMatches].sort((a, b) => {

@@ -8,20 +8,20 @@ class MatchAggregator {
     if (e1.category && e2.category && e1.category !== 'other' && e2.category !== 'other' && e1.category !== e2.category) {
       return false;
     }
-    const d1 = parseInt(e1.date) || 0;
-    const d2 = parseInt(e2.date) || 0;
+    if (e1.id && e1.id === e2.id) return true;
+    const d1 = Number(e1.date) || 0;
+    const d2 = Number(e2.date) || 0;
     if (d1 && d2 && Math.abs(d1 - d2) > 86400000) return false;
-    if (e1.id === e2.id) return true;
 
-    const words1 = e1.title.toLowerCase().replace(/[^a-z0-9]/g, ' ').split(' ').filter(w => w.length > 2);
-    const words2 = e2.title.toLowerCase().replace(/[^a-z0-9]/g, ' ').split(' ').filter(w => w.length > 2);
-    
-    let matches = 0;
+    const words1 = new Set(e1.title.toLowerCase().replace(/[^a-z0-9]/g, ' ').split(' ').filter(w => w.length > 2));
+    const words2 = new Set(e2.title.toLowerCase().replace(/[^a-z0-9]/g, ' ').split(' ').filter(w => w.length > 2));
+
+    let common = 0;
     for (const w of words1) {
-      if (words2.includes(w)) matches++;
+      if (words2.has(w)) common++;
     }
-    const similarity = matches / Math.max(words1.length, words2.length, 1);
-    return similarity >= 0.4;
+    const jaccard = common / Math.max(words1.size + words2.size - common, 1);
+    return jaccard >= 0.5;
   }
 
   async syncMatches() {
@@ -54,11 +54,16 @@ class MatchAggregator {
       });
     };
 
+    // Providers swallow their own errors and return []. A non-empty result is the
+    // only reliable success signal; it keeps a total upstream outage from wiping the cache.
+    let anyProviderSucceeded = false;
+
     if (process.env.LOW_MEMORY_MODE === 'true') {
       // Memory-safe sequential fetching (Alwaysdata)
       for (const p of this.providers) {
         try {
           const providerMatches = await p.getMatches();
+          if (Array.isArray(providerMatches) && providerMatches.length > 0) anyProviderSucceeded = true;
           processProviderMatches(providerMatches);
         } catch (err) {
           console.error(`[MatchAggregator] Provider fetch failed:`, err.message);
@@ -69,6 +74,7 @@ class MatchAggregator {
       const results = await Promise.allSettled(this.providers.map(p => p.getMatches()));
       results.forEach((promiseResult, index) => {
         if (promiseResult.status === 'fulfilled') {
+          if (Array.isArray(promiseResult.value) && promiseResult.value.length > 0) anyProviderSucceeded = true;
           processProviderMatches(promiseResult.value);
         } else {
           console.error(`[MatchAggregator] Provider ${index} failed:`, promiseResult.reason);
@@ -115,13 +121,13 @@ class MatchAggregator {
         if (isNaN(kickoff)) kickoff = 0;
       }
       if (kickoff === 0) return true; // Keep if we don't know the time
-      
+
       const oneDayMs = 24 * 3600 * 1000;
       return now <= kickoff + oneDayMs;
     });
 
     console.log(`[MatchAggregator] Sync complete. Merged ${activeMatches.length} active events.`);
-    if (activeMatches.length > 0) {
+    if (anyProviderSucceeded) {
       this.cacheService.setMatches(activeMatches);
     }
     return activeMatches;

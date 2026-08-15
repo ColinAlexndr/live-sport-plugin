@@ -37,7 +37,7 @@ class NtvProvider extends BaseProvider {
             title: `NTV ${serverName || `Server ${i}`}`,
             category: 'other',
             popular: '0',
-            sources: [{ source: 'ntv', id: link, url: `${this.baseUrl}${link}` }]
+            sources: [{ source: 'ntv', id: link, url: new URL(link, this.baseUrl).href }]
           }));
         }
       });

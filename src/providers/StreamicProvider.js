@@ -39,7 +39,7 @@ class StreamicProvider extends BaseProvider {
         }
 
         matches.push(new MatchEntity({
-          id: id,
+          id: 'streamic_' + id,
           title: s.title,
           category: categoryName,
           date: s.startTime ? (s.startTime * 1000).toString() : null,

@@ -38,8 +38,9 @@ class StreamFreeProvider extends BaseProvider {
         if (Array.isArray(streams)) {
           streams.forEach(s => {
             const id = s.stream_key || s.id;
+            if (!id) return;
             matches.push(new MatchEntity({
-              id: id,
+              id: 'sf_' + id,
               title: s.name,
               category: this.normalizeCategory(category),
               date: s.match_timestamp ? (s.match_timestamp * 1000).toString() : null,

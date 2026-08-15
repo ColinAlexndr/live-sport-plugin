@@ -39,7 +39,7 @@ async function handleStream(type, id, config) {
   const streamScorer = container.resolve('streamScorer');
 
   let activeSources = sortedSources;
-  if (config && config.sources && config.sources !== 'none') {
+  if (config && typeof config.sources === 'string' && config.sources !== 'none') {
     const enabled = config.sources.split(',');
     const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org'];
     activeSources = sortedSources.filter(src => {

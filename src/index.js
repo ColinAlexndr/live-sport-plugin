@@ -118,11 +118,10 @@ app.use('/api', createProxyMiddleware({
   }
 }));
 
-// ─── Dynamic URL Rewrite Middleware ─────────────────────────────────────────────
-// The Stremio addon SDK processes streams and returns JSON. We intercept it here
-// so we can dynamically rewrite stream URLs to use the correct absolute host based 
-// on the incoming request, instead of hardcoding BASE_URL. This fixes issues where
-// the addon is accessed remotely but falls back to localhost URLs.
+// ─── Stream URL Rewrite Middleware ──────────────────────────────────────────────
+// The Stremio addon SDK returns stream JSON with relative /watch and /api/hls
+// URLs. We intercept the response and prefix them with the trusted BASE_URL
+// (set ADDON_URL when self-hosting behind a LAN IP or tunnel).
 app.use((req, res, next) => {
   if (!req.path.includes('/stream/')) return next();
   
@@ -144,25 +143,14 @@ app.use((req, res, next) => {
       try {
         const body = JSON.parse(bodyString);
         if (body && Array.isArray(body.streams)) {
-          const host = req.get('host');
-          const proto = req.headers['x-forwarded-proto'] || req.protocol;
-          const dynamicBaseUrl = `${proto}://${host}`;
-          
           let modified = false;
           body.streams.forEach(s => {
             if (s.externalUrl && s.externalUrl.startsWith('/watch')) {
-              s.externalUrl = `${dynamicBaseUrl}${s.externalUrl}`;
-              modified = true;
-            } else if (BASE_URL && s.externalUrl && s.externalUrl.startsWith(BASE_URL)) {
-              s.externalUrl = s.externalUrl.replace(BASE_URL, dynamicBaseUrl);
+              s.externalUrl = `${BASE_URL}${s.externalUrl}`;
               modified = true;
             }
-            
             if (s.url && s.url.startsWith('/api/hls')) {
-              s.url = `${dynamicBaseUrl}${s.url}`;
-              modified = true;
-            } else if (BASE_URL && s.url && s.url.startsWith(BASE_URL)) {
-              s.url = s.url.replace(BASE_URL, dynamicBaseUrl);
+              s.url = `${BASE_URL}${s.url}`;
               modified = true;
             }
           });
@@ -192,20 +180,22 @@ app.use((req, res, next) => {
  */
 function decodeConfigSegment(configStr) {
   try {
+    let parsed;
     if (configStr.startsWith('%7B') || configStr.startsWith('{')) {
-      return JSON.parse(decodeURIComponent(configStr));
+      parsed = JSON.parse(decodeURIComponent(configStr));
+    } else {
+      let base64 = configStr.replace(/-/g, '+').replace(/_/g, '/');
+      while (base64.length % 4) {
+        base64 += '=';
+      }
+      parsed = JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'));
     }
-    let base64 = configStr.replace(/-/g, '+').replace(/_/g, '/');
-    while (base64.length % 4) {
-      base64 += '=';
-    }
-    return JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'));
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    return parsed;
   } catch (e) {
     return null;
   }
 }
-
-// ─── Dynamic Manifest based on Config ─────────────────────────────────────────
 app.get('/:config?/manifest.json', (req, res, next) => {
   const { manifest } = require('./manifest');
   let parsedConfig = {};
@@ -217,7 +207,7 @@ app.get('/:config?/manifest.json', (req, res, next) => {
   // Clone manifest catalogs
   const newManifest = JSON.parse(JSON.stringify(manifest));
   
-  if (parsedConfig.sports && parsedConfig.sports !== 'all') {
+  if (typeof parsedConfig.sports === 'string' && parsedConfig.sports !== 'all') {
     const enabledSports = parsedConfig.sports.split(',');
     
     // General catalogs to always keep
@@ -234,7 +224,7 @@ app.get('/:config?/manifest.json', (req, res, next) => {
   }
   
   // Remove teams catalog if the user hasn't configured any teams
-  if (!parsedConfig.teams || parsedConfig.teams.trim() === '') {
+  if (typeof parsedConfig.teams !== 'string' || parsedConfig.teams.trim() === '') {
     newManifest.catalogs = newManifest.catalogs.filter(c => c.id !== 'nuvio_sports_teams');
   }
 
