@@ -1,3 +1,14 @@
+// Hardcoded CF proxy pool — add more URLs to multiply free-tier limits
+const CF_PROXY_POOL = [
+  'https://nuvio-proxy.odedararaj456.workers.dev',
+];
+
+// Pick a random proxy from the pool
+function getCfProxyUrl() {
+  if (CF_PROXY_POOL.length === 0) return null;
+  return CF_PROXY_POOL[Math.floor(Math.random() * CF_PROXY_POOL.length)];
+}
+
 class BaseProvider {
   constructor({ circuitBreaker }) {
     this.circuitBreaker = circuitBreaker;
@@ -39,7 +50,7 @@ class BaseProvider {
    * Fetch wrapper that routes through Cloudflare proxy if configured
    */
   async proxyFetch(url, options = {}) {
-    const cfProxyUrl = process.env.CF_PROXY_URL;
+    const cfProxyUrl = getCfProxyUrl();
     if (cfProxyUrl) {
       const proxyUrl = new URL(cfProxyUrl);
       proxyUrl.searchParams.set('url', url);
@@ -68,7 +79,7 @@ class BaseProvider {
    * Get the proxy URL for a stream
    */
   getStreamProxyUrl(streamUrl, referer, origin) {
-    const cfProxyUrl = process.env.CF_PROXY_URL;
+    const cfProxyUrl = getCfProxyUrl();
     if (cfProxyUrl) {
       const proxyUrl = new URL(cfProxyUrl);
       proxyUrl.searchParams.set('url', streamUrl);
@@ -97,3 +108,4 @@ class BaseProvider {
 }
 
 module.exports = BaseProvider;
+module.exports.getCfProxyUrl = getCfProxyUrl;

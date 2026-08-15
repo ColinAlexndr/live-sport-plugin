@@ -113,7 +113,7 @@ class StreamSports99Provider extends BaseProvider {
       }
 
       if (item && item.channels && Array.isArray(item.channels)) {
-        const cfProxyUrl = process.env.CF_PROXY_URL;
+
 
         for (const [idx, ch] of item.channels.entries()) {
           if (ch.url) {
