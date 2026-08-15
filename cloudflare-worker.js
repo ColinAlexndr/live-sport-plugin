@@ -84,6 +84,57 @@ export default {
     }
     // -----------------------------------
 
+    // --- EDGE SCRAPER FOR STREAMSPORTS99 ---
+    if (action === 'streamsports99') {
+      try {
+        const playerUrl = reqUrl.searchParams.get('playerUrl');
+        
+        const playerRes = await fetch(playerUrl, { headers: newHeaders });
+        const html = await playerRes.text();
+        
+        // Find the decoder function (contains atob)
+        const decoderMatch = html.match(/function\s+([a-zA-Z0-9_]+)\s*\([a-zA-Z0-9_]+\)\s*\{.+?atob/);
+        if (!decoderMatch) return new Response("SS99 Error: No decoder function found", { status: 502 });
+        
+        const decoderName = decoderMatch[1];
+        
+        // Find the concatenation line: var X = decoderName(A) + decoderName(B) + ...
+        const concatRegex = new RegExp('var\\s+([a-zA-Z0-9_]+)\\s*=\\s*' + decoderName + '\\([^;]+;');
+        const concatMatch = html.match(concatRegex);
+        if (!concatMatch) return new Response("SS99 Error: No concat line found", { status: 502 });
+        
+        // Extract all variable names passed to the decoder
+        const varRegex = new RegExp(decoderName + '\\(([a-zA-Z0-9_]+)\\)', 'g');
+        let varMatch;
+        const vars = [];
+        while ((varMatch = varRegex.exec(concatMatch[0])) !== null) {
+          vars.push(varMatch[1]);
+        }
+        
+        // Decode each base64 variable and concatenate
+        let m3u8Url = '';
+        for (const v of vars) {
+          const valMatch = html.match(new RegExp("var\\s+" + v + "\\s*=\\s*'([^']+)'"));
+          if (valMatch && valMatch[1]) {
+            let b64 = valMatch[1].replace(/-/g, '+').replace(/_/g, '/');
+            while (b64.length % 4) b64 += '=';
+            try { m3u8Url += atob(b64); } catch(e) {}
+          }
+        }
+        
+        if (!m3u8Url) return new Response("SS99 Error: Could not decode m3u8 URL", { status: 502 });
+        
+        reqUrl.searchParams.set('url', m3u8Url);
+        // Update referer/origin for the stream fetch
+        newHeaders.set('Referer', 'https://streamsports99.fun/');
+        newHeaders.set('Origin', 'https://streamsports99.fun');
+        // Fall through to normal proxy logic
+      } catch (err) {
+        return new Response(`SS99 Edge Scrape Error: ${err.message}`, { status: 502 });
+      }
+    }
+    // -----------------------------------
+
     const targetUrl = reqUrl.searchParams.get('url');
     if (!targetUrl) {
       return new Response("Nuvio Cloudflare Proxy is running!", { 

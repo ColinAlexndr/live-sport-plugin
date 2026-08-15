@@ -113,10 +113,30 @@ class StreamSports99Provider extends BaseProvider {
       }
 
       if (item && item.channels && Array.isArray(item.channels)) {
+        const cfProxyUrl = process.env.CF_PROXY_URL;
+
         for (const [idx, ch] of item.channels.entries()) {
           if (ch.url) {
+            // --- CF EDGE SCRAPER PATH ---
+            if (cfProxyUrl) {
+              console.log(`[Proxy] Using CF edge-scraper for SS99 channel: ${ch.channel_name || idx}`);
+              const proxyUrl = new URL(cfProxyUrl);
+              proxyUrl.searchParams.set('action', 'streamsports99');
+              proxyUrl.searchParams.set('playerUrl', ch.url);
+              proxyUrl.searchParams.set('referer', 'https://streamsports99.fun/');
+              proxyUrl.searchParams.set('origin', 'https://streamsports99.fun');
+              
+              streams.push(new StreamEntity({
+                name: 'StreamSports99',
+                title: ch.channel_name || `VIP Stream ${idx + 1}`,
+                url: proxyUrl.toString() + '&ext=.m3u8',
+                resolution: 'HD'
+              }));
+              continue;
+            }
+
+            // --- INTERNAL FALLBACK ---
             try {
-              // Fetch the player HTML to extract the actual m3u8
               const playerRes = await fetch(ch.url, {
                 headers: {
                   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -152,16 +172,13 @@ class StreamSports99Provider extends BaseProvider {
                     }
                     
                     if (m3u8Url) {
-                      const embedPath = `streamsports99/${sourceId || 'match'}/stream${idx+1}`;
-                      const embedOrigin = 'https://streamsports99.fun';
-                      const proxiedUrl = `/api/hls/playlist.m3u8?url=${encodeURIComponent(m3u8Url)}&referer=${encodeURIComponent('https://streamsports99.fun/')}&embed=${encodeURIComponent(embedPath)}&embedOrigin=${encodeURIComponent(embedOrigin)}`;
                       streams.push(new StreamEntity({
                         name: `StreamSports99`,
                         title: ch.channel_name || `VIP Stream ${idx + 1}`,
-                        url: proxiedUrl,
+                        url: this.getStreamProxyUrl(m3u8Url, 'https://streamsports99.fun/', 'https://streamsports99.fun'),
                         resolution: 'HD'
                       }));
-                      continue; // move to next channel
+                      continue;
                     }
                   }
                 }
