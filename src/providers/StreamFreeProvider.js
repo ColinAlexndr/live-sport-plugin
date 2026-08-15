@@ -71,8 +71,27 @@ class StreamFreeProvider extends BaseProvider {
 
   async resolveStream(sourceId, matchCategory, matchTitle) {
     try {
-      // For StreamFree, we need the original category to resolve the stream
       const embedUrl = `https://streamfree.top/embed/${matchCategory}/${sourceId}`;
+      
+      const cfProxyUrl = process.env.CF_PROXY_URL;
+      if (cfProxyUrl) {
+          console.log(`[Proxy] Using CF edge-scraper for StreamFree match: ${sourceId}`);
+          const proxyUrl = new URL(cfProxyUrl);
+          proxyUrl.searchParams.set('action', 'streamfree');
+          proxyUrl.searchParams.set('embedUrl', embedUrl);
+          proxyUrl.searchParams.set('streamId', sourceId);
+          proxyUrl.searchParams.set('referer', 'https://streamfree.top/');
+          proxyUrl.searchParams.set('origin', 'https://streamfree.top');
+          
+          return [new StreamEntity({
+            name: 'StreamFree',
+            title: `StreamFree (Auto)`,
+            url: proxyUrl.toString() + '&ext=.m3u8',
+            resolution: 'HD'
+          })];
+      }
+
+      // FALLBACK: If no CF Proxy is configured, scrape internally (uses Render bandwidth)
       const html = await this.embedFetcher.fire(embedUrl);
       if (!html) return [];
 
@@ -103,7 +122,6 @@ class StreamFreeProvider extends BaseProvider {
          baseUrl = streamKeyData.external_url;
       } else {
          const serverName = (streamKeyData && streamKeyData.server_name) ? streamKeyData.server_name : 'origin';
-         // StreamFree javascript logic:
          if (serverName !== 'origin') {
             baseUrl = `https://streamfree.top/live-cdn/${sourceId}${bestQuality}/index.m3u8`;
          } else {
@@ -113,7 +131,7 @@ class StreamFreeProvider extends BaseProvider {
       
       const targetUrl = `${baseUrl}?_t=${t._t}&_e=${t._e}&_n=${t._n}`;
 
-      console.log(`[Proxy] Using CF proxy (or internal) for StreamFree match: ${sourceId}`);
+      console.log(`[Proxy] Using internal fallback for StreamFree match: ${sourceId}`);
       return [new StreamEntity({
         name: 'StreamFree',
         title: `StreamFree (${bestQuality})`,

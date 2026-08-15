@@ -26,14 +26,7 @@ export default {
       });
     }
 
-    const targetUrl = reqUrl.searchParams.get('url');
-    if (!targetUrl) {
-      return new Response("Nuvio Cloudflare Proxy is running!", { 
-        status: 200,
-        headers: { "Access-Control-Allow-Origin": "*" }
-      });
-    }
-
+    const action = reqUrl.searchParams.get('action');
     const referer = reqUrl.searchParams.get('referer');
     const origin = reqUrl.searchParams.get('origin');
     
@@ -44,9 +37,60 @@ export default {
     
     // OVERWRITE User-Agent to ensure scraper and player exactly match for token binding
     newHeaders.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36');
-    
-    // Remove headers that shouldn't be forwarded
     newHeaders.delete('Host');
+
+    // --- EDGE SCRAPER FOR STREAMFREE ---
+    // If the request is for streamfree, scrape the token on the edge so the IP matches!
+    if (action === 'streamfree') {
+      try {
+        const embedUrl = reqUrl.searchParams.get('embedUrl');
+        const streamId = reqUrl.searchParams.get('streamId');
+        
+        const embedRes = await fetch(embedUrl, { headers: newHeaders });
+        const html = await embedRes.text();
+        const match = html.match(/const\s+_0x\s*=\s*(\{.*?\});/);
+        if (!match) return new Response("Proxy Error: Could not find token", { status: 502 });
+        
+        const tokens = JSON.parse(match[1]);
+        const prefs = ['1080p', '720p', '540p'];
+        let bestQuality = '1080p';
+        let t = null;
+        for (const q of prefs) {
+          if (tokens[q]) { bestQuality = q; t = tokens[q]; break; }
+        }
+        
+        if (!t) return new Response("Proxy Error: No stream qualities found", { status: 502 });
+
+        const keyRes = await fetch(`https://streamfree.top/get-stream-key/${streamId}`, { headers: newHeaders });
+        const keyData = await keyRes.json();
+        let baseUrl = '';
+        if (keyData && keyData.is_external && keyData.external_url) {
+          baseUrl = keyData.external_url;
+        } else {
+          const serverName = (keyData && keyData.server_name) ? keyData.server_name : 'origin';
+          if (serverName !== 'origin') {
+            baseUrl = `https://streamfree.top/live-cdn/${streamId}${bestQuality}/index.m3u8`;
+          } else {
+            baseUrl = `https://streamfree.top/live/${streamId}${bestQuality}/index.m3u8`;
+          }
+        }
+        
+        const generatedTargetUrl = `${baseUrl}?_t=${t._t}&_e=${t._e}&_n=${t._n}`;
+        reqUrl.searchParams.set('url', generatedTargetUrl);
+        // Fall through to normal proxy logic
+      } catch (err) {
+        return new Response(`StreamFree Edge Scrape Error: ${err.message}`, { status: 502 });
+      }
+    }
+    // -----------------------------------
+
+    const targetUrl = reqUrl.searchParams.get('url');
+    if (!targetUrl) {
+      return new Response("Nuvio Cloudflare Proxy is running!", { 
+        status: 200,
+        headers: { "Access-Control-Allow-Origin": "*" }
+      });
+    }
     
     try {
       const response = await fetch(targetUrl, {
