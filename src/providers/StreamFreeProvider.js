@@ -72,7 +72,27 @@ class StreamFreeProvider extends BaseProvider {
   async resolveStream(sourceId, matchCategory, matchTitle) {
     try {
       const embedUrl = `https://streamfree.top/embed/${matchCategory}/${sourceId}`;
+      
+      const { getCfProxyUrl } = require('./BaseProvider');
+      const cfProxyUrl = getCfProxyUrl();
+      if (cfProxyUrl) {
+          console.log(`[Proxy] Using CF edge-scraper for StreamFree match: ${sourceId}`);
+          const proxyUrl = new URL(cfProxyUrl);
+          proxyUrl.searchParams.set('action', 'streamfree');
+          proxyUrl.searchParams.set('embedUrl', embedUrl);
+          proxyUrl.searchParams.set('streamId', sourceId);
+          proxyUrl.searchParams.set('referer', 'https://streamfree.top/');
+          proxyUrl.searchParams.set('origin', 'https://streamfree.top');
+          
+          return [new StreamEntity({
+            name: 'StreamFree',
+            title: `StreamFree (Auto)`,
+            url: proxyUrl.toString() + '&ext=.m3u8',
+            resolution: 'HD'
+          })];
+      }
 
+      // FALLBACK: If no CF Proxy is configured, scrape internally (uses Render bandwidth)
       const html = await this.embedFetcher.fire(embedUrl);
       if (!html) return [];
 
@@ -139,21 +159,11 @@ class StreamFreeProvider extends BaseProvider {
       
       const targetUrl = `${baseUrl}?_t=${t._t}&_e=${t._e}&_n=${t._n}`;
 
-      console.log(`[Proxy] Using direct proxyHeaders for StreamFree match: ${sourceId}`);
-      
-      // Return direct stream using Stremio's native proxyHeaders, bypassing Cloudflare completely!
+      console.log(`[Proxy] Using internal fallback for StreamFree match: ${sourceId}`);
       return [new StreamEntity({
         name: 'StreamFree',
         title: `StreamFree (${bestQuality})`,
-        url: targetUrl,
-        behaviorHints: {
-          proxyHeaders: {
-            request: {
-              'Referer': 'https://streamfree.top/',
-              'Origin': 'https://streamfree.top'
-            }
-          }
-        },
+        url: this.getStreamProxyUrl(targetUrl, 'https://streamfree.top/', 'https://streamfree.top'),
         resolution: bestQuality
       })];
     } catch (error) {
