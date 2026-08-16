@@ -20,10 +20,10 @@ jobs:
             worker_name: nuvio-proxy2
 
           # When you create a 3rd Cloudflare account, add secrets CF_ACCOUNT_ID_3 and CF_API_TOKEN_3, then uncomment below:
-          # - proxy_num: 3
-          #   account_id: CF_ACCOUNT_ID_3
-          #   api_token: CF_API_TOKEN_3
-          #   worker_name: nuvio-proxy3
+          - proxy_num: 3
+            account_id: CF_ACCOUNT_ID_3
+            api_token: CF_API_TOKEN_3
+            worker_name: nuvio-proxy3
 
     steps:
       - uses: actions/checkout@v4
