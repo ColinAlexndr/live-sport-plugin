@@ -122,8 +122,8 @@ class MatchAggregator {
       }
       if (kickoff === 0) return true; // Keep if we don't know the time
 
-      const oneDayMs = 24 * 3600 * 1000;
-      return now <= kickoff + oneDayMs;
+      const twoDaysMs = 48 * 3600 * 1000;
+      return now <= kickoff + twoDaysMs;
     });
 
     console.log(`[MatchAggregator] Sync complete. Merged ${activeMatches.length} active events.`);
