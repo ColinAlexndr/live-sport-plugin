@@ -56,11 +56,29 @@ export default {
         if (!match) return new Response("Proxy Error: Could not find token", { status: 502 });
         
         const tokens = JSON.parse(match[1]);
+        
+        let availableQualities = {};
+        try {
+            const statusRes = await fetch(`https://streamfree.top/api/stream-status/${streamId}`, { headers: embedHeaders });
+            if (statusRes.ok) {
+                const statusData = await statusRes.json();
+                availableQualities = statusData.qualities || {};
+            }
+        } catch (e) {
+            // Ignore status error
+        }
+        
         const prefs = ['1080p', '720p', '540p'];
-        let bestQuality = '1080p';
+        let bestQuality = null;
         let t = null;
         for (const q of prefs) {
-          if (tokens[q]) { bestQuality = q; t = tokens[q]; break; }
+          if (tokens[q] && availableQualities[q]) { bestQuality = q; t = tokens[q]; break; }
+        }
+        
+        if (!t) {
+            for (const q of prefs) {
+              if (tokens[q]) { bestQuality = q; t = tokens[q]; break; }
+            }
         }
         
         if (!t) return new Response("Proxy Error: No stream qualities found", { status: 502 });

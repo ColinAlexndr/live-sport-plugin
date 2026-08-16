@@ -100,15 +100,42 @@ class StreamFreeProvider extends BaseProvider {
       if (!match) throw new Error("Could not find _0x tokens in StreamFree HTML");
 
       const tokens = JSON.parse(match[1]);
+
+      // Fetch the stream status to find available qualities
+      const statusUrl = `https://streamfree.top/api/stream-status/${sourceId}`;
+      let availableQualities = {};
+      try {
+        const statusRes = await this.proxyFetch(statusUrl, {
+           headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' }
+        });
+        if (statusRes.ok) {
+           const statusData = await statusRes.json();
+           availableQualities = statusData.qualities || {};
+        }
+      } catch (e) {
+        console.warn(`[StreamFree] Failed to fetch stream status for ${sourceId}`);
+      }
+
       const prefs = ['1080p', '720p', '540p'];
       let bestQuality = null;
       let t = null;
 
       for (const q of prefs) {
-        if (tokens[q]) {
+        if (tokens[q] && availableQualities[q]) {
           bestQuality = q;
           t = tokens[q];
           break;
+        }
+      }
+      
+      // Fallback
+      if (!bestQuality) {
+        for (const q of prefs) {
+          if (tokens[q]) {
+            bestQuality = q;
+            t = tokens[q];
+            break;
+          }
         }
       }
 

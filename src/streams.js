@@ -86,9 +86,7 @@ async function handleStream(type, id, config) {
       } else if (sourceName === 'sportyhunter') {
         const provider = container.resolve('sportyHunterProvider');
         resStreams = await provider.resolveStream(src.id, match.category, match.title);
-      } else if (sourceName === 'streamsports') {
-        const provider = container.resolve('streamSportsProvider');
-        resStreams = await provider.resolveStream(src.id, match.category, match.title);
+
       } else if (sourceName === 'watchfooty') {
         const provider = container.resolve('watchFootyProvider');
         resStreams = await provider.resolveStream(src.id, match.category, match.title);
