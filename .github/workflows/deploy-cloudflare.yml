@@ -21,9 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to Cloudflare Proxy ${${ matrix.proxy_num }}
+      - name: Deploy to Cloudflare Proxy ${{ matrix.proxy_num }}
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${${ secrets[matrix.api_token] }}
-          accountId: ${${ secrets[matrix.account_id] }}
-          command: deploy cloudflare-worker/index.js --name ${${ matrix.worker_name }} --compatibility-date 2024-01-01
+          apiToken: ${{ secrets[matrix.api_token] }}
+          accountId: ${{ secrets[matrix.account_id] }}
+          command: deploy cloudflare-worker/index.js --name ${{ matrix.worker_name }} --compatibility-date 2024-01-01
