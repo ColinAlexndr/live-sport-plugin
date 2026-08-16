@@ -122,8 +122,10 @@ class MatchAggregator {
       }
       if (kickoff === 0) return true; // Keep if we don't know the time
 
-      const twoDaysMs = 48 * 3600 * 1000;
-      return now <= kickoff + twoDaysMs;
+      // Keep matches up to 24 hours after kickoff, except TimStreams which we keep for 48 hours (VODs)
+      const isTimStreams = match.sources && match.sources.some(s => s.source === 'timstreams');
+      const expiryWindowMs = isTimStreams ? (48 * 3600 * 1000) : (24 * 3600 * 1000);
+      return now <= kickoff + expiryWindowMs;
     });
 
     console.log(`[MatchAggregator] Sync complete. Merged ${activeMatches.length} active events.`);
