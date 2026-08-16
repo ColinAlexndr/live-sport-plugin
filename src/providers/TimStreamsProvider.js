@@ -60,25 +60,108 @@ class TimStreamsProvider extends BaseProvider {
     return matches;
   }
 
+  /**
+   * Decode a XOR-obfuscated script block from TimStreams embed pages.
+   * Pattern: var XXXX=[nums],YYYY=key1,ZZZZ=key2 → decoded via (char ^ key1 - key2 + 256) % 256
+   */
+  decodeObfuscatedScript(html) {
+    const match = html.match(/var\s+(\w+)\s*=\s*\[([\d,]+)\]\s*,\s*(\w+)\s*=\s*(\d+)\s*,\s*(\w+)\s*=\s*(\d+)/);
+    if (!match) return null;
+
+    const arr = match[2].split(',').map(Number);
+    const xor = parseInt(match[4]);
+    const sub = parseInt(match[6]);
+
+    let decoded = '';
+    for (let i = 0; i < arr.length; i++) {
+      decoded += String.fromCharCode(((arr[i] ^ xor) - sub + 256) % 256);
+    }
+    return decoded;
+  }
+
+  /**
+   * Extract the signed m3u8 URL from a TimStreams embed page.
+   */
+  async extractM3u8(embedUrl) {
+    try {
+      const res = await fetch(embedUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+          'Referer': 'https://timstreams.st/'
+        },
+        signal: AbortSignal.timeout(10000)
+      });
+
+      if (!res.ok) return null;
+      const html = await res.text();
+
+      const decoded = this.decodeObfuscatedScript(html);
+      if (!decoded) return null;
+
+      const urlMatch = decoded.match(/https?:\/\/[^"]+\.m3u8/);
+      if (!urlMatch) return null;
+
+      // Extract the referer domain from the embed URL for proxyHeaders
+      const embedDomain = new URL(embedUrl).origin;
+
+      return { m3u8: urlMatch[0], referer: embedDomain };
+    } catch (e) {
+      console.warn(`[${this.name}] m3u8 extraction failed for ${embedUrl}:`, e.message);
+      return null;
+    }
+  }
+
   async resolveStream(sourceId, matchCategory, matchTitle, streamNoParam = null, sourceName = 'timstreams') {
     const streams = [];
+    const StreamEntity = require('../domain/StreamEntity');
+
     try {
       const matches = await this.getMatches();
       const match = matches.find(m => m.id === `ts_${sourceId}` || m.sources.some(s => s.id === sourceId));
-      let watchUrl = `https://logic.icelanders.st/embed/${sourceId}`;
-      
+
+      // Collect all embed URLs for this match
+      let embedUrls = [];
       if (match) {
-        const src = match.sources.find(s => s.id === sourceId);
-        if (src && src.url) watchUrl = src.url;
+        embedUrls = match.sources
+          .filter(s => s.url)
+          .map(s => ({ name: s.id, url: s.url }));
       }
-      
-      const StreamEntity = require('../domain/StreamEntity');
-      // TimStreams feeds are obfuscated, use the external web player.
-      streams.push(new StreamEntity({
-        name: `Nuvio Web Player`,
-        title: `TimStreams (${sourceId})`,
-        externalUrl: `${BASE_URL}/watch?url=${encodeURIComponent(watchUrl)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
-      }));
+
+      if (embedUrls.length === 0) {
+        embedUrls = [{ name: sourceId, url: `https://logic.icelanders.st/embed/${sourceId}` }];
+      }
+
+      // Try to extract m3u8 from each embed URL
+      for (const embed of embedUrls) {
+        const result = await this.extractM3u8(embed.url);
+
+        if (result) {
+          // Native direct stream with proxyHeaders
+          streams.push(new StreamEntity({
+            name: `TimStreams`,
+            title: embed.name || `TimStreams Stream`,
+            url: result.m3u8,
+            behaviorHints: {
+              notWebReady: true,
+              proxyHeaders: {
+                request: {
+                  "Referer": result.referer + '/',
+                  "Origin": result.referer,
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+                }
+              }
+            },
+            resolution: 'HD'
+          }));
+        } else {
+          // Fallback to web player
+          streams.push(new StreamEntity({
+            name: `Nuvio Web Player`,
+            title: `TimStreams (${embed.name}) (Web)`,
+            externalUrl: `${BASE_URL}/watch?url=${encodeURIComponent(embed.url)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
+          }));
+        }
+      }
     } catch (err) {
       console.error(`[${this.name}] resolveStream failed for ${sourceId}:`, err.message);
     }
