@@ -136,11 +136,25 @@ class TimStreamsProvider extends BaseProvider {
         const result = await this.extractM3u8(embed.url);
 
         if (result) {
-          // Route through Nuvio's internal HLS proxy to enforce User-Agent and bypass Stremio header stripping
-          const proxyUrl = `/api/hls/playlist.m3u8?url=${encodeURIComponent(result.m3u8)}&referer=${encodeURIComponent(result.referer + '/')}&origin=${encodeURIComponent(result.referer)}`;
+          const { getCfProxyUrl } = require('./BaseProvider');
+          const cfProxyUrl = getCfProxyUrl();
+
+          let proxyUrl;
+          if (cfProxyUrl) {
+            console.log(`[Proxy] Using CF edge proxy for TimStreams match: ${embed.name}`);
+            const proxyUri = new URL(cfProxyUrl);
+            proxyUri.searchParams.set('url', result.m3u8);
+            proxyUri.searchParams.set('referer', result.referer + '/');
+            proxyUri.searchParams.set('origin', result.referer);
+            proxyUrl = proxyUri.toString();
+          } else {
+            console.log(`[Proxy] Using internal fallback for TimStreams match: ${embed.name}`);
+            // Route through Nuvio's internal HLS proxy to enforce User-Agent
+            proxyUrl = `/api/hls/playlist.m3u8?url=${encodeURIComponent(result.m3u8)}&referer=${encodeURIComponent(result.referer + '/')}&origin=${encodeURIComponent(result.referer)}`;
+          }
           
           streams.push(new StreamEntity({
-            name: `TimStreams`,
+            name: cfProxyUrl ? `TimStreams (CF Edge)` : `TimStreams`,
             title: embed.name || `TimStreams Stream`,
             url: proxyUrl,
             resolution: 'HD'
