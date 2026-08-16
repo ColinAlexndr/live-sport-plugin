@@ -158,7 +158,17 @@ class StreamSports99Provider extends BaseProvider {
                       streams.push(new StreamEntity({
                         name: `StreamSports99`,
                         title: ch.channel_name || `VIP Stream ${idx + 1}`,
-                        url: this.getStreamProxyUrl(m3u8Url, 'https://streamsports99.fun/', 'https://streamsports99.fun'),
+                        url: m3u8Url,
+                        behaviorHints: {
+                          notWebReady: true,
+                          proxyHeaders: {
+                            request: {
+                              "Origin": "https://streamsports99.fun",
+                              "Referer": "https://streamsports99.fun/",
+                              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+                            }
+                          }
+                        },
                         resolution: 'HD'
                       }));
                       continue;
