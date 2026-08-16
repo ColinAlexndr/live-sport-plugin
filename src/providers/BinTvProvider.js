@@ -92,7 +92,8 @@ class BinTvProvider extends BaseProvider {
   }
 
   async extractDirectUrl(watchUrl) {
-    const streamId = watchUrl.split('/').pop().split('?')[0];
+    const urlObj = new URL(watchUrl);
+    const streamId = urlObj.pathname.split('/embed/')[1];
     const { wasmBase64, jsCode } = await this.loadWasmDependencies();
 
     return new Promise((resolve, reject) => {
@@ -100,31 +101,48 @@ class BinTvProvider extends BaseProvider {
 
         const sandbox = {
             console: console,
+            resolve: (val) => { clearTimeout(timeout); resolve(val); },
+            reject: (err) => { clearTimeout(timeout); reject(err); },
             setTimeout: setTimeout,
             clearTimeout: clearTimeout,
             setInterval: setInterval,
             clearInterval: clearInterval,
             atob: atob,
             TextEncoder: TextEncoder,
+            TextDecoder: TextDecoder,
+            URL: URL,
+            Request: Request,
+            Response: Response,
             Uint8Array: Uint8Array,
             Promise: Promise,
             Buffer: Buffer,
             sharedWasmBase64: wasmBase64,
             nodeFetch: async (input, init) => {
                 const headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
                     'Origin': 'https://embedindia.st',
                     'Referer': 'https://embedindia.st/'
                 };
-                if (init && init.headers) Object.assign(headers, init.headers);
-                const res = await fetch(input, { ...init, headers });
-                const buf = await res.arrayBuffer();
-                return {
-                    ok: res.ok,
-                    status: res.status,
-                    arrayBuffer: async () => buf,
-                    json: async () => JSON.parse(new TextDecoder().decode(buf))
-                };
+                if (input instanceof Request) {
+                    input.headers.forEach((v, k) => headers[k] = v);
+                }
+                if (init && init.headers) {
+                    if (init.headers instanceof Headers) {
+                        init.headers.forEach((v, k) => headers[k] = v);
+                    } else {
+                        Object.assign(headers, init.headers);
+                    }
+                }
+                const url = typeof input === 'string' ? input : input.url;
+                const method = init?.method || (input instanceof Request ? input.method : 'GET');
+                let body = init?.body;
+                if (!body && input instanceof Request && method !== 'GET' && method !== 'HEAD') {
+                    body = await input.clone().arrayBuffer();
+                }
+                const fetchOptions = { ...init, method, headers };
+                if (body) fetchOptions.body = body;
+                const res = await fetch(url, fetchOptions);
+                return res;
             }
         };
 
@@ -132,23 +150,100 @@ class BinTvProvider extends BaseProvider {
 
         // Add globals inside the context
         vm.runInContext(`
-            globalThis.window = globalThis;
             globalThis.global = globalThis;
             globalThis.self = globalThis;
-            globalThis.navigator = { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' };
+            globalThis.window = new Proxy(globalThis, {
+                get: (t, p) => {
+                    if (typeof p === 'string' && !(p in t) && p !== 'Math' && p !== 'Object' && p !== 'then') {
+                        console.log('GLOBAL MISSING ACCESS:', p);
+                    }
+                    return t[p];
+                }
+            });
+            globalThis.navigator = { 
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+                maxTouchPoints: 0,
+                deviceMemory: 8,
+                platform: 'Win32',
+                hardwareConcurrency: 8,
+                mimeTypes: [{ type: 'application/pdf' }, { type: 'text/pdf' }],
+                plugins: [{ name: 'Chrome PDF Plugin' }, { name: 'Chrome PDF Viewer' }, { name: 'Native Client' }]
+            };
             globalThis.location = {
                 href: 'https://embedindia.st/embed/${streamId}',
                 protocol: 'https:',
                 host: 'embedindia.st',
                 hostname: 'embedindia.st'
             };
+            const glConstants = {
+                VENDOR: 7936,
+                RENDERER: 7937,
+                VERSION: 7938,
+                SHADING_LANGUAGE_VERSION: 35724,
+                ALIASED_LINE_WIDTH_RANGE: 33902,
+                ALIASED_POINT_SIZE_RANGE: 33901,
+                ALPHA_BITS: 3413,
+                BLUE_BITS: 3412,
+                DEPTH_BITS: 3414,
+                GREEN_BITS: 3411,
+                MAX_COMBINED_TEXTURE_IMAGE_UNITS: 35661,
+                MAX_CUBE_MAP_TEXTURE_SIZE: 34076,
+                MAX_FRAGMENT_UNIFORM_VECTORS: 36349,
+                MAX_RENDERBUFFER_SIZE: 34024,
+                MAX_TEXTURE_IMAGE_UNITS: 34930,
+                MAX_TEXTURE_SIZE: 3379,
+                MAX_VARYING_VECTORS: 36348,
+                MAX_VERTEX_ATTRIBS: 34921,
+                MAX_VERTEX_TEXTURE_IMAGE_UNITS: 35660,
+                MAX_VERTEX_UNIFORM_VECTORS: 36347,
+                RED_BITS: 3410,
+                STENCIL_BITS: 3415
+            };
+            const _contextHandler = {
+                get: (t, p) => {
+                    if (p in glConstants) return glConstants[p];
+                    if (p === 'getExtension') return (name) => {
+                        if (name === 'WEBGL_debug_renderer_info') return {
+                            UNMASKED_VENDOR_WEBGL: 37445,
+                            UNMASKED_RENDERER_WEBGL: 37446
+                        };
+                        return { loseContext: () => {} };
+                    };
+                    if (p === 'getParameter') return (id) => {
+                        if (id === 7936 || id === 37445) return "Google Inc. (Apple)"; // VENDOR
+                        if (id === 7937 || id === 37446) return "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)"; // RENDERER
+                        if (id === 7938) return "WebGL 1.0 (OpenGL ES 2.0 Chromium)"; // VERSION
+                        if (id === 35724) return "WebGL GLSL ES 1.0 (OpenGL ES GLSL ES 1.0 Chromium)"; // SHADING_LANGUAGE_VERSION
+                        if (id === 33902 || id === 33901) return new Float32Array([1, 1]); // ALIASED_LINE_WIDTH_RANGE
+                        return 8;
+                    };
+                    if (p === 'getSupportedExtensions') return () => ["WEBGL_debug_renderer_info"];
+                    return t[p] || (() => ({}));
+                }
+            };
+            const _elementHandler = {
+                get: (t, p) => {
+                    if (p === 'getContext') return () => new Proxy({}, _contextHandler);
+                    if (p === 'toDataURL') return () => "data:image/png;base64,...";
+                    return t[p] || (() => ({}));
+                }
+            };
             globalThis.document = {
                 location: globalThis.location,
-                createElement: () => ({ style: {} }),
+                createElement: (tag) => {
+                    return new Proxy({ style: {}, width: 0, height: 0 }, _elementHandler);
+                },
                 getElementById: () => ({ getAttribute: () => "", setAttribute: () => {} }),
                 head: { appendChild: () => {} },
                 querySelector: () => null
             };
+            const _handler = {
+                get: (t, p) => {
+                    return t[p];
+                }
+            };
+            globalThis.document = new Proxy(globalThis.document, _handler);
+            globalThis.navigator = new Proxy(globalThis.navigator, _handler);
             globalThis.P2PEngineHls = { tryRegisterServiceWorker: () => Promise.resolve() };
             globalThis.jwplayer = () => ({
                 setup: (config) => {
@@ -172,16 +267,16 @@ class BinTvProvider extends BaseProvider {
             }
 
             globalThis.fetch = async (input, init) => {
-                if (typeof input === 'string' && input.startsWith('/')) {
-                    input = 'https://embedindia.st' + input;
+                if (typeof input === 'string') {
+                    input = new URL(input, 'https://embedindia.st/embed/${streamId}').href;
                 }
                 return globalThis.nodeFetch(input, init);
             };
 
             class MockRequest extends Request {
                 constructor(input, init) {
-                    if (typeof input === 'string' && input.startsWith('/')) {
-                        input = 'https://embedindia.st' + input;
+                    if (typeof input === 'string') {
+                        input = new URL(input, 'https://embedindia.st/embed/${streamId}').href;
                     }
                     super(input, init);
                 }
@@ -204,6 +299,7 @@ class BinTvProvider extends BaseProvider {
             (async () => {
                 try {
                     const wasm = await WrLiSv(bytes.buffer);
+                    console.log("WASM EXPORTS:", Object.keys(wasm));
                     const streamId = "${streamId}";
                     const streamBytes = new TextEncoder().encode(streamId);
                     const ptr = wasm.__wbindgen_malloc(streamBytes.length, 1);
