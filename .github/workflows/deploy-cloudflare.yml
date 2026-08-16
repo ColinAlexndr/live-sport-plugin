@@ -1,0 +1,29 @@
+name: Deploy Multiple Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'cloudflare-worker/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - proxy_num: 1
+            account_id: CF_ACCOUNT_ID_1
+            api_token: CF_API_TOKEN_1
+            worker_name: streamfree-proxy-1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Cloudflare Proxy ${${ matrix.proxy_num }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${${ secrets[matrix.api_token] }}
+          accountId: ${${ secrets[matrix.account_id] }}
+          command: deploy cloudflare-worker/index.js --name ${${ matrix.worker_name }} --compatibility-date 2024-01-01
