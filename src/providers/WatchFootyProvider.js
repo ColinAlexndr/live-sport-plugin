@@ -79,8 +79,17 @@ class WatchFootyProvider extends BaseProvider {
             };
             
             if (isDirect) {
-              console.log(`[Proxy] Using proxy for WatchFooty stream: ${idx + 1}`);
-              entityParams.url = this.getStreamProxyUrl(s.url, 'https://watchfooty.st/', 'https://watchfooty.st');
+              entityParams.url = s.url;
+              entityParams.behaviorHints = {
+                notWebReady: true,
+                proxyHeaders: {
+                  request: {
+                    "Origin": "https://watchfooty.st",
+                    "Referer": "https://watchfooty.st/",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+                  }
+                }
+              };
             } else {
               entityParams.externalUrl = `/watch?url=${encodeURIComponent(s.url)}&title=${encodeURIComponent(matchTitle || 'WatchFooty')}`;
             }
