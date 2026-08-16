@@ -1,7 +1,6 @@
 // Hardcoded CF proxy pool — add more URLs to multiply free-tier limits
 const CF_PROXY_POOL = [
   'https://nuvio-proxy.odedararaj456.workers.dev',
-  'https://streamfree-proxy-1.odedararaj456.workers.dev',
   'https://nuvio-proxy2.rajodedara360.workers.dev',
 ];
 
