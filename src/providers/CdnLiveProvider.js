@@ -72,16 +72,7 @@ class CdnLiveProvider extends BaseProvider {
             streams.push(new StreamEntity({
               name: `CDNLiveTV`,
               title: ch.channel_name || `CDNLive Stream ${idx + 1}`,
-              url: ch.url,
-              behaviorHints: {
-                notWebReady: true,
-                proxyHeaders: {
-                  request: {
-                    "Origin": "https://cdnlivetv.tv",
-                    "Referer": "https://cdnlivetv.tv/"
-                  }
-                }
-              },
+              url: this.getStreamProxyUrl(ch.url, 'https://cdnlivetv.tv/', 'https://cdnlivetv.tv'),
               resolution: 'HD'
             }));
           }
