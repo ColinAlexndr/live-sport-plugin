@@ -73,7 +73,8 @@ class StreamFreeProvider extends BaseProvider {
     try {
       const embedUrl = `https://streamfree.top/embed/${matchCategory}/${sourceId}`;
       
-      const cfProxyUrl = process.env.CF_PROXY_URL;
+      const { getCfProxyUrl } = require('./BaseProvider');
+      const cfProxyUrl = getCfProxyUrl();
       if (cfProxyUrl) {
           console.log(`[Proxy] Using CF edge-scraper for StreamFree match: ${sourceId}`);
           const proxyUrl = new URL(cfProxyUrl);
