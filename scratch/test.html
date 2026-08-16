@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+<script>
+const originalInstantiate = WebAssembly.instantiate;
+WebAssembly.instantiate = async function(buffer, imports) {
+  if (imports['./wasmgasm_bg.js']) {
+    const bg = imports['./wasmgasm_bg.js'];
+    window.bgImports = bg;
+  }
+  return originalInstantiate.call(this, buffer, imports);
+};
+WebAssembly.instantiateStreaming = WebAssembly.instantiate;
+</script>
+<script type="module">
+import { default as WrLiSv } from './real_gasm.js';
+WrLiSv().catch(e => console.error("WASM INIT ERROR:", e));
+console.log("Module loaded and initialized!");
+</script>
+</body>
+</html>

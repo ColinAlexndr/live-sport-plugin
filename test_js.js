@@ -1,0 +1,1 @@
+const f = async () => { const html = await (await fetch('https://embedindia.st/embed/f1/2026/netherlands/sprint-q/sky-sport-f1-de')).text(); const scriptTags = html.match(/<script.*?src=.*?<\/script>/g); console.log(scriptTags); }; f();

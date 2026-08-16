@@ -349,7 +349,7 @@ class BinTvProvider extends BaseProvider {
             streams.push(new StreamEntity({
                 name: `BinTv Direct`,
                 title: `BinTV Direct (${sourceId.split('/').pop()})`,
-                url: directUrl,
+                /* url: directUrl, */
                 behaviorHints: {
                     notWebReady: true,
                     proxyHeaders: {
