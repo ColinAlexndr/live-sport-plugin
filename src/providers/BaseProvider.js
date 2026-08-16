@@ -36,7 +36,10 @@ class BaseProvider {
    */
   normalizeCategory(cat) {
     if (!cat) return 'other';
-    cat = cat.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (typeof cat === 'object' && !Array.isArray(cat)) {
+      cat = cat.name || cat.title || 'other';
+    }
+    cat = String(cat).toLowerCase().replace(/[^a-z0-9]/g, '');
     if (cat.includes('americanfootball') || cat.includes('nfl') || cat.includes('afl') || cat.includes('gridiron')) return 'american_football';
     if (cat.includes('soccer') || cat.includes('football')) return 'football';
     if (cat.includes('motor') || cat.includes('racing') || cat.includes('cycling')) return 'motorsport';

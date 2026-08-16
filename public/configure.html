@@ -291,14 +291,30 @@
     </div>
 
     <a href="#" id="installBtn" class="btn">INSTALL ADDON</a>
+    <button id="copyBtn" class="btn" style="background: #333; margin-top: 12px; font-size: 14px;">COPY LINK (FOR NUVIO APP)</button>
   </div>
 
   <script>
     const btn = document.getElementById('installBtn');
+    const copyBtn = document.getElementById('copyBtn');
     const input = document.getElementById('teams');
     const checkboxes = document.querySelectorAll('#sportsGrid input[type="checkbox"]');
     const sourceCheckboxes = document.querySelectorAll('#sourcesGrid input[type="checkbox"]');
     const timezoneSelect = document.getElementById('timezone');
+
+    // Attempt to load existing config from URL
+    let existingConfig = {};
+    try {
+      const pathParts = window.location.pathname.split('/');
+      if (pathParts.length >= 3 && pathParts[pathParts.length - 1] === 'configure') {
+        const encoded = pathParts[pathParts.length - 2];
+        let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) base64 += '=';
+        existingConfig = JSON.parse(decodeURIComponent(escape(atob(base64))));
+      }
+    } catch (e) {
+      console.warn("Could not parse existing config from URL", e);
+    }
 
     // Populate timezones
     try {
@@ -330,7 +346,7 @@
         { value: 'Pacific/Auckland', label: 'New Zealand (GMT+12:00)' }
       ];
 
-      const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const localTz = existingConfig.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
       let matchedLocal = false;
 
       popularTimezones.forEach(tz => {
@@ -346,7 +362,6 @@
         timezoneSelect.appendChild(option);
       });
 
-      // If local timezone isn't in our curated list, add it dynamically to the top
       if (!matchedLocal && localTz) {
         const option = document.createElement('option');
         option.value = localTz;
@@ -366,6 +381,39 @@
       console.warn("Timezone API not fully supported.", e);
     }
 
+    // Apply existing config settings to UI
+    if (existingConfig.teams) {
+      input.value = existingConfig.teams;
+    }
+    
+    if (existingConfig.sports) {
+      if (existingConfig.sports === 'none') {
+        checkboxes.forEach(cb => { cb.checked = false; cb.closest('.checkbox-label').classList.remove('active'); });
+      } else if (existingConfig.sports !== 'all') {
+        const sports = existingConfig.sports.split(',');
+        checkboxes.forEach(cb => {
+          cb.checked = sports.includes(cb.value);
+          if (cb.checked) cb.closest('.checkbox-label').classList.add('active');
+          else cb.closest('.checkbox-label').classList.remove('active');
+        });
+      }
+    }
+
+    if (existingConfig.sources) {
+      if (existingConfig.sources === 'none') {
+        sourceCheckboxes.forEach(cb => { cb.checked = false; cb.closest('.checkbox-label').classList.remove('active'); });
+      } else if (existingConfig.sources !== 'all') {
+        const sources = existingConfig.sources.split(',');
+        sourceCheckboxes.forEach(cb => {
+          cb.checked = sources.includes(cb.value);
+          if (cb.checked) cb.closest('.checkbox-label').classList.add('active');
+          else cb.closest('.checkbox-label').classList.remove('active');
+        });
+      }
+    }
+
+    let currentManifestUrl = '';
+
     function updateLink() {
       const teams = input.value.trim();
       const selectedSports = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
@@ -380,26 +428,37 @@
 
       if (selectedSports.length < checkboxes.length) {
         config.sports = selectedSports.join(',');
-        if (config.sports === '') config.sports = 'none'; // If nothing is checked
+        if (config.sports === '') config.sports = 'none';
       }
 
       if (selectedSources.length < sourceCheckboxes.length) {
         config.sources = selectedSources.join(',');
-        if (config.sources === '') config.sources = 'none'; // If nothing is checked
+        if (config.sources === '') config.sources = 'none';
       }
 
       if (Object.keys(config).length > 0) {
-        // Use Base64 encoding to avoid URL routing issues with slashes or braces
-        // We use encodeURIComponent/unescape to safely handle any non-ASCII characters
         const base64Str = btoa(unescape(encodeURIComponent(JSON.stringify(config))));
-        // Convert to base64url to prevent slashes from breaking Express routing
         const encoded = base64Str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
         manifestUrl = window.location.origin + '/' + encoded + '/manifest.json';
       }
 
+      currentManifestUrl = manifestUrl;
       const installUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
       btn.href = installUrl;
     }
+
+    copyBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      navigator.clipboard.writeText(currentManifestUrl).then(() => {
+        const originalText = copyBtn.innerText;
+        copyBtn.innerText = 'COPIED TO CLIPBOARD!';
+        copyBtn.style.background = '#10b981';
+        setTimeout(() => {
+          copyBtn.innerText = originalText;
+          copyBtn.style.background = '#333';
+        }, 2000);
+      });
+    });
 
     input.addEventListener('input', updateLink);
     timezoneSelect.addEventListener('change', updateLink);
@@ -411,6 +470,7 @@
         updateLink();
       });
     });
+    
     updateLink();
   </script>
 </body>

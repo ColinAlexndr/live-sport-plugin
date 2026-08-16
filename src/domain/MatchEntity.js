@@ -28,7 +28,13 @@ class MatchEntity {
     this.status = status || '';
     this.popular = popular === '1' || popular === true ? '1' : '0';
     this.sources = Array.isArray(sources) ? sources : [];
-    this.league = league || '';
+    
+    if (league && typeof league === 'object' && !Array.isArray(league)) {
+      this.league = league.name || league.title || '';
+    } else {
+      this.league = league ? String(league) : '';
+    }
+    
     this.team1 = team1 || null;
     this.team2 = team2 || null;
     this.thumbnail_url = thumbnail_url || '';

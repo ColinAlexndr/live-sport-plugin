@@ -116,8 +116,8 @@ function mapMatchToMetaPreview(match, config = {}) {
   if (match.team1 && match.team1.name) cast.push(match.team1.name);
   if (match.team2 && match.team2.name) cast.push(match.team2.name);
 
-  const leagueStr = match.league ? `🏆 **League:** ${match.league}\n` : '';
-  const desc = `${leagueStr}📅 **Category:** ${match.category.toUpperCase()}\n⏰ **Status:** ${timeString === '24/7 Stream' ? '24/7 Live Network' : 'Kickoff at ' + timeString + relativeTimeStr}`;
+  const leagueStr = match.league ? `🏆 League: ${match.league}\n` : '';
+  const desc = `${leagueStr}📅 Category: ${match.category.toUpperCase()}\n⏰ Status: ${timeString === '24/7 Stream' ? '24/7 Live Network' : 'Kickoff at ' + timeString + relativeTimeStr}`;
 
   return {
     id: `nuvio_sport_${match.id}`,
@@ -182,7 +182,7 @@ async function handleCatalog(type, id, extra, config) {
   if (typeof conf.sports === 'string' && conf.sports !== 'all') {
     const allowedSports = conf.sports.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
     // Don't filter out networks (24/7 TV) since they aren't tied to a specific sport
-    filteredMatches = filteredMatches.filter(m => m.category === 'networks' || allowedSports.includes(m.category) || allowedSports.includes('other'));
+    filteredMatches = filteredMatches.filter(m => m.category === 'networks' || allowedSports.includes(m.category));
   }
 
   filteredMatches = [...filteredMatches].sort((a, b) => {
