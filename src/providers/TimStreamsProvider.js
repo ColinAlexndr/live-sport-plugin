@@ -136,21 +136,13 @@ class TimStreamsProvider extends BaseProvider {
         const result = await this.extractM3u8(embed.url);
 
         if (result) {
-          // Native direct stream with proxyHeaders
+          // Route through Nuvio's internal HLS proxy to enforce User-Agent and bypass Stremio header stripping
+          const proxyUrl = `/api/hls/playlist.m3u8?url=${encodeURIComponent(result.m3u8)}&referer=${encodeURIComponent(result.referer + '/')}&origin=${encodeURIComponent(result.referer)}`;
+          
           streams.push(new StreamEntity({
             name: `TimStreams`,
             title: embed.name || `TimStreams Stream`,
-            url: result.m3u8,
-            behaviorHints: {
-              notWebReady: true,
-              proxyHeaders: {
-                request: {
-                  "Referer": result.referer + '/',
-                  "Origin": result.referer,
-                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
-                }
-              }
-            },
+            url: proxyUrl,
             resolution: 'HD'
           }));
         } else {
