@@ -26,10 +26,18 @@ class TimStreamsProvider extends BaseProvider {
       data.events.forEach((s, index) => {
         const title = s.name || `TimStreams Event ${index}`;
         let rawGenre = s.genre;
-        if (typeof rawGenre === 'object' && rawGenre !== null && !Array.isArray(rawGenre)) {
-          rawGenre = rawGenre.name || rawGenre.title || 'other';
+        let genreLabel = 'other';
+        if (Array.isArray(genres)) {
+          const matchedGenre = genres.find(g => g.id === rawGenre);
+          if (matchedGenre && matchedGenre.name) {
+            genreLabel = matchedGenre.name;
+          }
+        } else if (typeof rawGenre === 'object' && rawGenre !== null && !Array.isArray(rawGenre)) {
+          genreLabel = rawGenre.name || rawGenre.title || 'other';
+        } else {
+          genreLabel = String(genres[String(rawGenre)]?.name || genres[String(rawGenre)] || rawGenre || 'other');
         }
-        const genreLabel = String(genres[String(rawGenre)] || rawGenre || 'other');
+        
         const category = this.normalizeCategory(genreLabel);
         
         let dateMs = Date.now();
