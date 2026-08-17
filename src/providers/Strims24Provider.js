@@ -314,7 +314,7 @@ class Strims24Provider extends BaseProvider {
         if (directUrl) {
             streams.push(new StreamEntity({
               name: `Strims24 Channel`,
-              title: ch.name || `Channel ${ch.id}`,
+              title: `[Direct] ${ch.name || `Channel ${ch.id}`}`,
               url: directUrl,
               behaviorHints: {
                 notWebReady: true,
@@ -379,7 +379,7 @@ class Strims24Provider extends BaseProvider {
           if (directUrl) {
               streams.push(new StreamEntity({
                  name: `Strims24 Custom`,
-                 title: cu.name || `Custom ${cu.id}`,
+                 title: `[Direct] ${cu.name || `Custom ${cu.id}`}`,
                  url: directUrl,
                  behaviorHints: {
                    notWebReady: true,
