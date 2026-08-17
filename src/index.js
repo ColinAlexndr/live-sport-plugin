@@ -36,7 +36,7 @@ let isShuttingDown = false;
 
 function spawnResolver() {
   if (isShuttingDown) return;
-  const spawnEnv = { ...process.env, PORT: RESOLVER_PORT, HOST: '127.0.0.1', BASE_URL: BASE_URL };
+  const spawnEnv = { ...process.env, PORT: RESOLVER_PORT, HOST: '127.0.0.1' };
   if (process.env.LOW_MEMORY_MODE === 'true') {
     /* spawnEnv.NODE_OPTIONS removed to prevent 502 crashes */
   }
@@ -144,13 +144,21 @@ app.use((req, res, next) => {
         const body = JSON.parse(bodyString);
         if (body && Array.isArray(body.streams)) {
           let modified = false;
+          let proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+          if (proto.includes(',')) proto = proto.split(',')[0].trim();
+          
+          let host = req.headers['x-forwarded-host'] || req.headers.host;
+          if (host && host.includes(',')) host = host.split(',')[0].trim();
+          
+          const currentBaseUrl = host ? `${proto}://${host}` : BASE_URL;
+
           body.streams.forEach(s => {
             if (s.externalUrl && s.externalUrl.startsWith('/watch')) {
-              s.externalUrl = `${BASE_URL}${s.externalUrl}`;
+              s.externalUrl = `${currentBaseUrl}${s.externalUrl}`;
               modified = true;
             }
             if (s.url && s.url.startsWith('/api/hls')) {
-              s.url = `${BASE_URL}${s.url}`;
+              s.url = `${currentBaseUrl}${s.url}`;
               modified = true;
             }
           });

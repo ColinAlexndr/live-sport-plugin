@@ -177,7 +177,7 @@ class TimStreamsProvider extends BaseProvider {
           streams.push(new StreamEntity({
             name: `Nuvio Web Player`,
             title: `TimStreams (${embed.name}) (Web)`,
-            externalUrl: `${BASE_URL}/watch?url=${encodeURIComponent(embed.url)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
+            externalUrl: `/watch?url=${encodeURIComponent(embed.url)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
           }));
         }
       }

@@ -69,11 +69,6 @@ async function handleStream(type, id, config) {
         const provider = container.resolve('streamFreeProvider');
         const sfCategory = src.original_category || match.category;
         resStreams = await provider.resolveStream(src.id, sfCategory, match.title);
-        for (const s of resStreams) {
-          if (s.url && s.url.startsWith('/api/hls')) {
-            s.url = `${BASE_URL}${s.url}`;
-          }
-        }
       } else if (sourceName === 'timstreams') {
         const provider = container.resolve('timStreamsProvider');
         resStreams = await provider.resolveStream(src.id, match.category, match.title);
@@ -121,6 +116,13 @@ async function handleStream(type, id, config) {
             }
           }
         }];
+      } else if (sourceName.startsWith('yaml_')) {
+        const yamlProviders = container.resolve('yamlProviders');
+        const pName = sourceName.replace('yaml_', '');
+        const provider = yamlProviders.find(p => p.name === pName);
+        if (provider) {
+          resStreams = await provider.resolveStream(src.id, match.category, match.title);
+        }
       } else {
         // Unknown or unsupported source, ignore
         resStreams = [];
@@ -158,9 +160,6 @@ async function handleStream(type, id, config) {
         // Only add if not already present somehow
         const resolved = await sfProvider.resolveStream(channel.id, 'cricket', channel.title);
         for (const s of resolved) {
-          if (s.url && s.url.startsWith('/api/hls')) {
-            s.url = `${BASE_URL}${s.url}`;
-          }
           s.score = streamScorer.calculateScore(s, 'streamfree');
           s._source = 'streamfree';
           streams.push(s);

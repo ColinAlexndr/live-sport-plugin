@@ -279,7 +279,7 @@ class Strims24Provider extends BaseProvider {
         streams.push(new StreamEntity({
           name: `Strims24 Channel`,
           title: ch.name || `Channel ${ch.id}`,
-          externalUrl: `${BASE_URL}/watch?url=${encodeURIComponent(embedUrl)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
+          externalUrl: `/watch?url=${encodeURIComponent(embedUrl)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
         }));
       }
 
@@ -293,7 +293,7 @@ class Strims24Provider extends BaseProvider {
           streams.push(new StreamEntity({
              name: `Strims24 Custom`,
              title: cu.name || `Custom ${cu.id}`,
-             externalUrl: `${BASE_URL}/watch?url=${encodeURIComponent(embed)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
+             externalUrl: `/watch?url=${encodeURIComponent(embed)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
           }));
         }
       }
