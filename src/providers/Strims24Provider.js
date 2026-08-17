@@ -94,6 +94,8 @@ class Strims24Provider extends BaseProvider {
           awayTeam: data.AF || '',
           startTime: parseInt(data.AD || '0', 10),
           tvChannelIds: this.parseTvChannels(data.AL),
+          team1Logo: data.OA ? `https://www.flashscore.com/res/image/data/${data.OA}` : null,
+          team2Logo: data.OB ? `https://www.flashscore.com/res/image/data/${data.OB}` : null
         });
       }
     });
@@ -207,6 +209,8 @@ class Strims24Provider extends BaseProvider {
               date: kickoff.toString(),
               popular: isLive ? '1' : '0',
               league: e.tournamentName,
+              team1: { name: e.homeTeam, logo: e.team1Logo },
+              team2: { name: e.awayTeam, logo: e.team2Logo },
               sources: [{ source: 'strims24', id: `FS:${e.id}`, original_sport: sport }]
             }));
           }

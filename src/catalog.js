@@ -63,8 +63,19 @@ function mapMatchToMetaPreview(match, config = {}) {
     return null;
   }
 
-  // Sleek, clean fallback showing just the sport category to avoid title truncation
-  const fallbackPoster = `https://placehold.co/800x450/111111/${color}.png?text=${match.category.toUpperCase()}&font=Montserrat`;
+  // Generate a clean, readable fallback poster using the match title
+  let posterText = match.title;
+  if (match.team1 && match.team2 && match.team1.name && match.team2.name) {
+      posterText = `${match.team1.name}\nvs\n${match.team2.name}`;
+  } else {
+      posterText = posterText.replace(/ vs /i, '\nvs\n').replace(/ - /i, '\n-\n');
+  }
+  
+  if (posterText.length > 50) {
+      posterText = match.category.toUpperCase();
+  }
+  
+  const fallbackPoster = `https://placehold.co/800x450/111111/${color}.png?text=${encodeURIComponent(posterText)}&font=Montserrat`;
   
   let poster = fallbackPoster;
   let logo = match.team1 && match.team1.logo ? match.team1.logo : null;
