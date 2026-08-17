@@ -281,34 +281,52 @@ class Strims24Provider extends BaseProvider {
              'Referer': 'https://strims24.pl/'
         };
         
-        try {
-            const embedRes = await this.proxyFetch(embedUrl, { headers: { 'Referer': 'https://strims24.pl/' } });
-            if (embedRes.ok) {
-                const embedHtml = await embedRes.text();
-                let premiumMatch = embedHtml.match(/src=["']\/premium\/([^"']+)["']/);
-                if (!premiumMatch) {
-                    premiumMatch = embedHtml.match(/src=["']https:\/\/main\.wwin\.cloud\/premium\/([^"']+)["']/);
-                }
-                
-                if (premiumMatch) {
-                    const slug = premiumMatch[1];
-                    const psignRes = await this.proxyFetch(`https://main.wwin.cloud/psign/${encodeURIComponent(slug)}`, {
-                        headers: { 'Referer': embedUrl, 'Accept': 'application/json' }
-                    });
-                    const psignData = await psignRes.json();
-                    if (psignData && psignData.url) {
-                        directUrl = psignData.url;
-                        proxyReqHeaders['Referer'] = 'https://main.wwin.cloud/';
+        let premiumSlug = null;
+        const premiumUrlMatch = embedUrl.match(/\/premium\/([^?&]+)/);
+        if (premiumUrlMatch) {
+            premiumSlug = premiumUrlMatch[1];
+        } else {
+            const socialMatch = embedUrl.match(/\/social\/([a-z0-9-]+)/i);
+            if (socialMatch) premiumSlug = socialMatch[1].replace(/-/g, '');
+        }
+
+        if (!premiumSlug) {
+            try {
+                const embedRes = await this.proxyFetch(embedUrl, { headers: { 'Referer': 'https://strims24.pl/' } });
+                if (embedRes.ok) {
+                    const embedHtml = await embedRes.text();
+                    let premiumMatch = embedHtml.match(/src=["']\/premium\/([^"']+)["']/);
+                    if (!premiumMatch) {
+                        premiumMatch = embedHtml.match(/src=["']https:\/\/main\.wwin\.cloud\/premium\/([^"']+)["']/);
                     }
-                } else {
-                    const m3u8Match = embedHtml.match(/(https?:\/\/[^"']+\.m3u8[^"']*)/i);
-                    if (m3u8Match) {
-                        directUrl = m3u8Match[1];
+                    
+                    if (premiumMatch) {
+                        premiumSlug = premiumMatch[1];
+                    } else {
+                        const m3u8Match = embedHtml.match(/(https?:\/\/[^"']+\.m3u8[^"']*)/i);
+                        if (m3u8Match) {
+                            directUrl = m3u8Match[1];
+                        }
                     }
                 }
+            } catch (e) {
+                console.error(`[${this.name}] Failed to extract direct stream for channel ${ch.id}`, e.message);
             }
-        } catch (e) {
-            console.error(`[${this.name}] Failed to extract direct stream for channel ${ch.id}`, e.message);
+        }
+
+        if (premiumSlug) {
+            try {
+                const psignRes = await this.proxyFetch(`https://main.wwin.cloud/psign/${encodeURIComponent(premiumSlug)}`, {
+                    headers: { 'Referer': `https://main.wwin.cloud/premium/${premiumSlug}`, 'Accept': 'application/json' }
+                });
+                const psignData = await psignRes.json();
+                if (psignData && psignData.url) {
+                    directUrl = psignData.url;
+                    proxyReqHeaders['Referer'] = 'https://main.wwin.cloud/';
+                }
+            } catch (e) {
+                console.error(`[${this.name}] Failed to fetch psign for slug ${premiumSlug}`, e.message);
+            }
         }
 
         if (directUrl) {
@@ -346,34 +364,52 @@ class Strims24Provider extends BaseProvider {
              'Referer': 'https://strims24.pl/'
           };
           
-          try {
-              const embedRes = await this.proxyFetch(embedUrl, { headers: { 'Referer': 'https://strims24.pl/' } });
-              if (embedRes.ok) {
-                  const embedHtml = await embedRes.text();
-                  let premiumMatch = embedHtml.match(/src=["']\/premium\/([^"']+)["']/);
-                  if (!premiumMatch) {
-                      premiumMatch = embedHtml.match(/src=["']https:\/\/main\.wwin\.cloud\/premium\/([^"']+)["']/);
-                  }
-                  
-                  if (premiumMatch) {
-                      const slug = premiumMatch[1];
-                      const psignRes = await this.proxyFetch(`https://main.wwin.cloud/psign/${encodeURIComponent(slug)}`, {
-                          headers: { 'Referer': embedUrl, 'Accept': 'application/json' }
-                      });
-                      const psignData = await psignRes.json();
-                      if (psignData && psignData.url) {
-                          directUrl = psignData.url;
-                          proxyReqHeaders['Referer'] = 'https://main.wwin.cloud/';
+          let premiumSlug = null;
+          const premiumUrlMatch = embedUrl.match(/\/premium\/([^?&]+)/);
+          if (premiumUrlMatch) {
+              premiumSlug = premiumUrlMatch[1];
+          } else {
+              const socialMatch = embedUrl.match(/\/social\/([a-z0-9-]+)/i);
+              if (socialMatch) premiumSlug = socialMatch[1].replace(/-/g, '');
+          }
+
+          if (!premiumSlug) {
+              try {
+                  const embedRes = await this.proxyFetch(embedUrl, { headers: { 'Referer': 'https://strims24.pl/' } });
+                  if (embedRes.ok) {
+                      const embedHtml = await embedRes.text();
+                      let premiumMatch = embedHtml.match(/src=["']\/premium\/([^"']+)["']/);
+                      if (!premiumMatch) {
+                          premiumMatch = embedHtml.match(/src=["']https:\/\/main\.wwin\.cloud\/premium\/([^"']+)["']/);
                       }
-                  } else {
-                      const m3u8Match = embedHtml.match(/(https?:\/\/[^"']+\.m3u8[^"']*)/i);
-                      if (m3u8Match) {
-                          directUrl = m3u8Match[1];
+                      
+                      if (premiumMatch) {
+                          premiumSlug = premiumMatch[1];
+                      } else {
+                          const m3u8Match = embedHtml.match(/(https?:\/\/[^"']+\.m3u8[^"']*)/i);
+                          if (m3u8Match) {
+                              directUrl = m3u8Match[1];
+                          }
                       }
                   }
+              } catch (e) {
+                  console.error(`[${this.name}] Failed to extract direct stream for custom ${cu.id}`, e.message);
               }
-          } catch (e) {
-              console.error(`[${this.name}] Failed to extract direct stream for custom ${cu.id}`, e.message);
+          }
+
+          if (premiumSlug) {
+              try {
+                  const psignRes = await this.proxyFetch(`https://main.wwin.cloud/psign/${encodeURIComponent(premiumSlug)}`, {
+                      headers: { 'Referer': `https://main.wwin.cloud/premium/${premiumSlug}`, 'Accept': 'application/json' }
+                  });
+                  const psignData = await psignRes.json();
+                  if (psignData && psignData.url) {
+                      directUrl = psignData.url;
+                      proxyReqHeaders['Referer'] = 'https://main.wwin.cloud/';
+                  }
+              } catch (e) {
+                  console.error(`[${this.name}] Failed to fetch psign for slug ${premiumSlug}`, e.message);
+              }
           }
 
           if (directUrl) {
