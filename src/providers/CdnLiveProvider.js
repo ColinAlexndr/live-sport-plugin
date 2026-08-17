@@ -1,6 +1,7 @@
 const BaseProvider = require('./BaseProvider');
 const MatchEntity = require('../domain/MatchEntity');
 const StreamEntity = require('../domain/StreamEntity');
+const { parseTimezone } = require('../timezone');
 
 class CdnLiveProvider extends BaseProvider {
   constructor(opts) {
@@ -33,7 +34,7 @@ class CdnLiveProvider extends BaseProvider {
           let status = 'upcoming';
           if (item.status === 'live' || item.status === 'in') status = 'live';
 
-          const matchTime = item.start ? new Date(item.start).getTime() : Date.now();
+          const matchTime = item.start ? parseTimezone(item.start, 'UTC') : Date.now();
 
           matches.push(new MatchEntity({
             id: `cdn_${matchId}`,

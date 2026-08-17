@@ -1,6 +1,7 @@
 const BaseProvider = require('./BaseProvider');
 const MatchEntity = require('../domain/MatchEntity');
 const StreamEntity = require('../domain/StreamEntity');
+const { parseTimezone } = require('../timezone');
 
 class WatchFootyProvider extends BaseProvider {
   constructor(opts) {
@@ -41,7 +42,7 @@ class WatchFootyProvider extends BaseProvider {
             status = 'finished'; // Or upcoming, but we ignore finished usually
           }
 
-          const matchTime = item.timestamp ? new Date(item.timestamp).getTime() : Date.now();
+          const matchTime = item.timestamp ? parseTimezone(item.timestamp, 'UTC') : Date.now();
           
           // WatchFooty is mostly football
           const category = 'football';

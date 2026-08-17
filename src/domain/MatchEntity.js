@@ -1,22 +1,12 @@
+const { parseTimezone } = require('../timezone');
+
 /**
  * Converts a provider kickoff value into a millisecond epoch string.
- * Accepts ISO strings, second epochs, and millisecond epochs. Returns '' when unknown.
+ * Uses the robust timezone parser.
  */
 function toMillis(value) {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value) || value <= 0) return '';
-    return Math.round(value < 1e12 ? value * 1000 : value).toString();
-  }
-  const str = String(value).trim();
-  if (str === '' || str === '0') return '';
-  const numeric = Number(str);
-  if (Number.isFinite(numeric)) {
-    if (numeric <= 0) return '';
-    return Math.round(numeric < 1e12 ? numeric * 1000 : numeric).toString();
-  }
-  const t = new Date(str).getTime();
-  return Number.isFinite(t) && t > 0 ? t.toString() : '';
+  const parsed = parseTimezone(value, 'UTC'); // fallback if providers didn't already parse it
+  return parsed ? parsed.toString() : '';
 }
 
 class MatchEntity {

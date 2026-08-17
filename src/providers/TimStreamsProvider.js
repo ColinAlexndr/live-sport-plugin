@@ -1,6 +1,7 @@
 const axios = require('axios');
 const BaseProvider = require('./BaseProvider');
 const MatchEntity = require('../domain/MatchEntity');
+const { parseTimezone } = require('../timezone');
 const { BASE_URL } = require('../config');
 
 class TimStreamsProvider extends BaseProvider {
@@ -42,8 +43,8 @@ class TimStreamsProvider extends BaseProvider {
         
         let dateMs = Date.now();
         if (s.time) {
-          const parsed = new Date(s.time).getTime();
-          if (!isNaN(parsed)) dateMs = parsed;
+          const parsed = parseTimezone(s.time, 'America/New_York');
+          if (parsed) dateMs = parsed;
         }
 
         const sources = (s.streams || [])

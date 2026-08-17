@@ -1,6 +1,7 @@
 const BaseProvider = require('./BaseProvider');
 const MatchEntity = require('../domain/MatchEntity');
 const StreamEntity = require('../domain/StreamEntity');
+const { parseTimezone } = require('../timezone');
 
 class StreamSports99Provider extends BaseProvider {
   constructor(opts) {
@@ -78,6 +79,9 @@ class StreamSports99Provider extends BaseProvider {
               date: matchTime.toString(),
               popular: status === 'live' ? '1' : '0',
               league: item.tournament || key,
+              team1: { name: item.homeTeam, logo: item.homeTeamIMG },
+              team2: { name: item.awayTeam, logo: item.awayTeamIMG },
+              thumbnail_url: item.homeTeamIMG || item.awayTeamIMG || '', // Use home team as primary thumbnail
               sources: [{ source: 'streamsports99', id: matchId }]
             }));
           }

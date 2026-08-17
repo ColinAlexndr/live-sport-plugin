@@ -63,24 +63,34 @@ function mapMatchToMetaPreview(match, config = {}) {
     return null;
   }
 
-  const fallbackPoster = `https://placehold.co/800x450/111111/${color}.png?text=${safeTitle}&font=Montserrat`;
+  // Sleek, clean fallback showing just the sport category to avoid title truncation
+  const fallbackPoster = `https://placehold.co/800x450/111111/${color}.png?text=${match.category.toUpperCase()}&font=Montserrat`;
   
   let poster = fallbackPoster;
   let logo = match.team1 && match.team1.logo ? match.team1.logo : null;
 
+  // Helper to construct a standardized proxy URL for all images
+  // Uses JPEG with 80% quality to ensure sizes stay well under Stremio's 100kb limit
+  const getProxyUrl = (url, isLogo) => {
+    const fit = isLogo ? 'contain' : 'cover';
+    const bg = isLogo ? '&bg=1a1a1a' : '';
+    return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=800&h=450&fit=${fit}${bg}&output=jpeg&q=80`;
+  };
+
   // Enhance channel posters with logos
   const channelLogo = getChannelLogo(match.title);
   if (channelLogo) {
-    poster = `https://wsrv.nl/?url=${channelLogo}&w=800&h=450&fit=contain&bg=111111`;
+    poster = getProxyUrl(channelLogo, true);
     logo = channelLogo;
   } else if (match.thumbnail_url) {
     const tUrl = match.thumbnail_url.startsWith('http') ? match.thumbnail_url : `https://streamfree.top${match.thumbnail_url}`;
-    // If we have a thumbnail URL but it's likely a transparent logo (like from iptv-org), wrap it in wsrv to make it a beautiful landscape poster
-    if (match.category === 'networks' || tUrl.includes('logo')) {
-        poster = `https://wsrv.nl/?url=${encodeURIComponent(tUrl)}&w=800&h=450&fit=contain&bg=111111`;
-        logo = tUrl;
-    } else {
-        poster = tUrl;
+    // Determine if the URL is likely a logo that needs containment and a background
+    const isLogo = match.category === 'networks' || tUrl.toLowerCase().includes('logo') || tUrl.toLowerCase().includes('icon');
+    
+    poster = getProxyUrl(tUrl, isLogo);
+    
+    if (isLogo) {
+      logo = tUrl;
     }
   }
 
@@ -88,14 +98,17 @@ function mapMatchToMetaPreview(match, config = {}) {
 
   let timeString = '24/7 Stream';
   let relativeTimeStr = '';
+  let releasedIso = null;
   
   if (match.date && !isNaN(parseInt(match.date)) && parseInt(match.date) > 0) {
      const dateObj = new Date(parseInt(match.date));
+     releasedIso = dateObj.toISOString();
      const options = { hour: '2-digit', minute: '2-digit' };
-     if (config && config.timezone) {
-       options.timeZone = config.timezone;
-     }
-     timeString = dateObj.toLocaleTimeString('en-US', options);
+     
+     // Default to UTC if not specified by client, instead of server local time
+     options.timeZone = (config && config.timezone) ? config.timezone : 'UTC';
+     
+     timeString = dateObj.toLocaleTimeString('en-US', options) + (options.timeZone === 'UTC' ? ' UTC' : '');
      
      const now = Date.now();
      const diff = dateObj.getTime() - now;
@@ -120,7 +133,7 @@ function mapMatchToMetaPreview(match, config = {}) {
   const leagueStr = match.league ? `🏆 League: ${match.league}\n` : '';
   const desc = `${leagueStr}📅 Category: ${match.category.toUpperCase()}\n⏰ Status: ${timeString === '24/7 Stream' ? '24/7 Live Network' : 'Kickoff at ' + timeString + relativeTimeStr}`;
 
-  return {
+  const metaPreview = {
     id: `nuvio_sport_${match.id}`,
     type: 'tv',
     name: `${prefix}${match.title}`,
@@ -136,6 +149,12 @@ function mapMatchToMetaPreview(match, config = {}) {
       defaultVideoId: `nuvio_sport_${match.id}`
     }
   };
+
+  if (releasedIso) {
+    metaPreview.released = releasedIso;
+  }
+
+  return metaPreview;
 }
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
