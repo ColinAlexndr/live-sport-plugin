@@ -62,13 +62,11 @@
   </header>
 
   <main>
-    <div class="tabs" id="tabs">
-      <div class="tab active" onclick="loadCatalog('nuvio_sports_football', this)">⚽ Football</div>
-      <div class="tab" onclick="loadCatalog('nuvio_sports_cricket', this)">🏏 Cricket</div>
-      <div class="tab" onclick="loadCatalog('nuvio_sports_motorsport', this)">🏎️ Motorsport</div>
-      <div class="tab" onclick="loadCatalog('nuvio_sports_basketball', this)">🏀 Basketball</div>
-      <div class="tab" onclick="loadCatalog('nuvio_sports_american_football', this)">🏈 American Football</div>
-      <div class="tab" onclick="loadCatalog('nuvio_sports_other', this)">📡 Other</div>
+    <div style="display: flex; gap: 15px; margin-bottom: 30px; align-items: center; flex-wrap: wrap;">
+      <div class="tabs" id="tabs" style="flex: 1; margin-bottom: 0;">
+        <div style="color:var(--text-muted);">Loading catalogs...</div>
+      </div>
+      <input type="text" id="searchInput" placeholder="Search matches..." style="padding: 10px 20px; border-radius: 30px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: white; outline: none; min-width: 200px; font-family: 'Inter', sans-serif;">
     </div>
     <div class="grid" id="grid"></div>
   </main>
@@ -92,6 +90,41 @@
 
   <script>
     let hls = null;
+    let currentMatches = [];
+
+    async function loadTabs() {
+      try {
+        const res = await fetch('/manifest.json');
+        const manifest = await res.json();
+        const tabsContainer = document.getElementById('tabs');
+        tabsContainer.innerHTML = '';
+        
+        let firstCatalog = null;
+        let firstTab = null;
+
+        manifest.catalogs.forEach((catalog) => {
+          // Skip non-TV catalogs or internal ones
+          if (catalog.type !== 'tv' || catalog.id === 'nuvio_sports_teams') return;
+          
+          if (!firstCatalog) firstCatalog = catalog.id;
+          
+          const tab = document.createElement('div');
+          tab.className = 'tab';
+          tab.innerText = catalog.name.replace('nuvio ', '').replace('Nuvio ', '');
+          tab.onclick = () => loadCatalog(catalog.id, tab);
+          tabsContainer.appendChild(tab);
+          
+          if (!firstTab) firstTab = tab;
+        });
+
+        if (firstCatalog && firstTab) {
+          loadCatalog(firstCatalog, firstTab);
+        }
+      } catch (err) {
+        console.error('Failed to load manifest', err);
+        document.getElementById('tabs').innerHTML = '<div style="color:var(--accent);">Failed to load catalogs. Ensure server is running.</div>';
+      }
+    }
 
     async function loadCatalog(catalogId, tabElement) {
       if (tabElement) {
@@ -101,43 +134,59 @@
 
       const grid = document.getElementById('grid');
       grid.innerHTML = '<div style="color:var(--text-muted);">Fetching matches...</div>';
+      document.getElementById('searchInput').value = ''; // Reset search on tab change
       
       try {
         const res = await fetch(`/catalog/tv/${catalogId}.json`);
         const data = await res.json();
-        
-        grid.innerHTML = '';
-        if (!data.metas || data.metas.length === 0) {
-          grid.innerHTML = '<div style="color:var(--text-muted);">No live matches found in this category right now.</div>';
-          return;
-        }
-
-        data.metas.forEach(meta => {
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.onclick = () => fetchAndPlay(meta.id);
-          
-          const isLive = meta.name.includes('🔴');
-          const cleanName = meta.name.replace('🔴 [LIVE] ', '');
-          
-          card.innerHTML = `
-            <div class="poster-container">
-              <img class="background" src="${meta.background}" onerror="this.style.display='none'" loading="lazy">
-              <img class="poster" src="${meta.poster}" onerror="this.src='https://raw.githubusercontent.com/stremio/stremio-addon-sdk/master/docs/api/images/stremio-logo.png'" loading="lazy">
-              ${meta.logo && meta.logo !== meta.poster ? `<img class="logo" src="${meta.logo}">` : ''}
-              ${isLive ? '<div class="live-badge">LIVE</div>' : ''}
-            </div>
-            <div class="info">
-              <div class="title">${cleanName}</div>
-              <div class="desc">${meta.description.replace(/\n/g, '<br>')}</div>
-            </div>
-          `;
-          grid.appendChild(card);
-        });
+        currentMatches = data.metas || [];
+        renderGrid(currentMatches);
       } catch (err) {
         console.error(err);
         grid.innerHTML = '<div style="color:var(--accent);">Failed to load catalog. Ensure the Nuvio plugin is running.</div>';
       }
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      const filtered = currentMatches.filter(meta => 
+        meta.name.toLowerCase().includes(query) || 
+        (meta.description && meta.description.toLowerCase().includes(query))
+      );
+      renderGrid(filtered);
+    });
+
+    function renderGrid(metas) {
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+      
+      if (!metas || metas.length === 0) {
+        grid.innerHTML = '<div style="color:var(--text-muted);">No live matches found matching your criteria right now.</div>';
+        return;
+      }
+
+      metas.forEach(meta => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.onclick = () => fetchAndPlay(meta.id);
+        
+        const isLive = meta.name.includes('🔴');
+        const cleanName = meta.name.replace('🔴 [LIVE] ', '');
+        
+        card.innerHTML = `
+          <div class="poster-container">
+            <img class="background" src="${meta.background}" onerror="this.style.display='none'" loading="lazy">
+            <img class="poster" src="${meta.poster}" onerror="this.src='https://raw.githubusercontent.com/stremio/stremio-addon-sdk/master/docs/api/images/stremio-logo.png'" loading="lazy">
+            ${meta.logo && meta.logo !== meta.poster ? `<img class="logo" src="${meta.logo}">` : ''}
+            ${isLive ? '<div class="live-badge">LIVE</div>' : ''}
+          </div>
+          <div class="info">
+            <div class="title">${cleanName}</div>
+            <div class="desc">${(meta.description || '').replace(/\n/g, '<br>')}</div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
     }
 
     async function fetchAndPlay(id) {
@@ -227,7 +276,7 @@
       }
     }
 
-    loadCatalog('nuvio_sports_football', null);
+    loadTabs();
   </script>
 </body>
 </html>
