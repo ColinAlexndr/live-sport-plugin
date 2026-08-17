@@ -35,7 +35,7 @@ class NtvProvider extends BaseProvider {
           matches.push(new MatchEntity({
             id: `ntv_${i}`,
             title: `NTV ${serverName || `Server ${i}`}`,
-            category: 'other',
+            category: 'networks',
             popular: '0',
             sources: [{ source: 'ntv', id: link, url: new URL(link, this.baseUrl).href }]
           }));

@@ -31,10 +31,13 @@ class StreamSports99Provider extends BaseProvider {
       'ufc': 'mma',
       'mma': 'mma',
       'boxing': 'mma',
+      'wwe': 'mma',
       'tennis': 'tennis',
       'golf': 'golf',
       'rugby': 'rugby',
-      'darts': 'darts'
+      'darts': 'darts',
+      'ncaa': 'college',
+      'ncaaw': 'college'
     };
     return map[lower] || 'other';
   }

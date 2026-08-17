@@ -20,7 +20,8 @@ function mapMatchToMetaPreview(match, config = {}) {
     golf: '22c55e', // emerald
     darts: 'eab308', // yellow
     mma: 'dc2626', // crimson red
-    networks: '64748b' // slate
+    networks: '64748b', // slate
+    college: 'd946ef' // fuchsia
   };
   const color = categoryColors[match.category] || '333333';
   
@@ -173,7 +174,7 @@ async function handleCatalog(type, id, extra, config) {
       filteredMatches = []; // If no config, return empty
     }
   } else if (categoryMatch === 'other') {
-    const topLevelCats = ['football', 'cricket', 'basketball', 'motorsport', 'hockey', 'baseball', 'mma', 'golf', 'tennis', 'rugby', 'american_football', 'darts', 'networks'];
+    const topLevelCats = ['football', 'cricket', 'basketball', 'motorsport', 'hockey', 'baseball', 'mma', 'golf', 'tennis', 'rugby', 'american_football', 'darts', 'networks', 'college'];
     filteredMatches = matches.filter(m => !topLevelCats.includes(m.category));
   } else if (categoryMatch !== 'catalog') {
     filteredMatches = matches.filter(m => m.category === categoryMatch);
