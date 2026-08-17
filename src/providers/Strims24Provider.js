@@ -276,6 +276,56 @@ class Strims24Provider extends BaseProvider {
 
       for (const ch of uniqueChannels) {
         const embedUrl = `https://main.wwin.cloud/player/lean/${encodeURIComponent(ch.id)}`;
+        let directUrl = null;
+        let proxyReqHeaders = {
+             'Referer': 'https://strims24.pl/'
+        };
+        
+        try {
+            const embedRes = await this.proxyFetch(embedUrl, { headers: { 'Referer': 'https://strims24.pl/' } });
+            if (embedRes.ok) {
+                const embedHtml = await embedRes.text();
+                let premiumMatch = embedHtml.match(/src=["']\/premium\/([^"']+)["']/);
+                if (!premiumMatch) {
+                    premiumMatch = embedHtml.match(/src=["']https:\/\/main\.wwin\.cloud\/premium\/([^"']+)["']/);
+                }
+                
+                if (premiumMatch) {
+                    const slug = premiumMatch[1];
+                    const psignRes = await this.proxyFetch(`https://main.wwin.cloud/psign/${encodeURIComponent(slug)}`, {
+                        headers: { 'Referer': embedUrl, 'Accept': 'application/json' }
+                    });
+                    const psignData = await psignRes.json();
+                    if (psignData && psignData.url) {
+                        directUrl = psignData.url;
+                        proxyReqHeaders['Referer'] = 'https://main.wwin.cloud/';
+                    }
+                } else {
+                    const m3u8Match = embedHtml.match(/(https?:\/\/[^"']+\.m3u8[^"']*)/i);
+                    if (m3u8Match) {
+                        directUrl = m3u8Match[1];
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(`[${this.name}] Failed to extract direct stream for channel ${ch.id}`, e.message);
+        }
+
+        if (directUrl) {
+            streams.push(new StreamEntity({
+              name: `Strims24 Channel`,
+              title: ch.name || `Channel ${ch.id}`,
+              url: directUrl,
+              behaviorHints: {
+                notWebReady: true,
+                proxyHeaders: {
+                  request: proxyReqHeaders
+                }
+              }
+            }));
+            continue;
+        }
+
         streams.push(new StreamEntity({
           name: `Strims24 Channel`,
           title: ch.name || `Channel ${ch.id}`,
@@ -286,14 +336,65 @@ class Strims24Provider extends BaseProvider {
       if (dbDetail && Array.isArray(dbDetail.custom_urls)) {
         for (const cu of dbDetail.custom_urls) {
           if (cu.enabled === false) continue;
-          let embed = cu.url;
-          if (!/^https?:\/\//i.test(embed)) {
-             embed = `https://main.wwin.cloud${embed.startsWith('/') ? '' : '/'}${embed}`;
+          let embedUrl = cu.url;
+          if (!/^https?:\/\//i.test(embedUrl)) {
+             embedUrl = `https://main.wwin.cloud${embedUrl.startsWith('/') ? '' : '/'}${embedUrl}`;
           }
+
+          let directUrl = null;
+          let proxyReqHeaders = {
+             'Referer': 'https://strims24.pl/'
+          };
+          
+          try {
+              const embedRes = await this.proxyFetch(embedUrl, { headers: { 'Referer': 'https://strims24.pl/' } });
+              if (embedRes.ok) {
+                  const embedHtml = await embedRes.text();
+                  let premiumMatch = embedHtml.match(/src=["']\/premium\/([^"']+)["']/);
+                  if (!premiumMatch) {
+                      premiumMatch = embedHtml.match(/src=["']https:\/\/main\.wwin\.cloud\/premium\/([^"']+)["']/);
+                  }
+                  
+                  if (premiumMatch) {
+                      const slug = premiumMatch[1];
+                      const psignRes = await this.proxyFetch(`https://main.wwin.cloud/psign/${encodeURIComponent(slug)}`, {
+                          headers: { 'Referer': embedUrl, 'Accept': 'application/json' }
+                      });
+                      const psignData = await psignRes.json();
+                      if (psignData && psignData.url) {
+                          directUrl = psignData.url;
+                          proxyReqHeaders['Referer'] = 'https://main.wwin.cloud/';
+                      }
+                  } else {
+                      const m3u8Match = embedHtml.match(/(https?:\/\/[^"']+\.m3u8[^"']*)/i);
+                      if (m3u8Match) {
+                          directUrl = m3u8Match[1];
+                      }
+                  }
+              }
+          } catch (e) {
+              console.error(`[${this.name}] Failed to extract direct stream for custom ${cu.id}`, e.message);
+          }
+
+          if (directUrl) {
+              streams.push(new StreamEntity({
+                 name: `Strims24 Custom`,
+                 title: cu.name || `Custom ${cu.id}`,
+                 url: directUrl,
+                 behaviorHints: {
+                   notWebReady: true,
+                   proxyHeaders: {
+                     request: proxyReqHeaders
+                   }
+                 }
+              }));
+              continue;
+          }
+
           streams.push(new StreamEntity({
              name: `Strims24 Custom`,
              title: cu.name || `Custom ${cu.id}`,
-             externalUrl: `/watch?url=${encodeURIComponent(embed)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
+             externalUrl: `/watch?url=${encodeURIComponent(embedUrl)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
           }));
         }
       }
