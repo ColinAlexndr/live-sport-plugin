@@ -7,6 +7,7 @@ const CF_PROXY_POOL = [
 
 // Pick a random proxy from the pool
 function getCfProxyUrl() {
+  if (process.env.NODE_ENV === 'test') return null;
   if (CF_PROXY_POOL.length === 0) return null;
   return CF_PROXY_POOL[Math.floor(Math.random() * CF_PROXY_POOL.length)];
 }

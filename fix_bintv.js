@@ -1,1 +1,0 @@
-const fs = require('fs'); let code = fs.readFileSync('./src/providers/BinTvProvider.js', 'utf8'); code = code.replace(/url: directUrl,/g, '/* url: directUrl, */'); fs.writeFileSync('./src/providers/BinTvProvider.js', code);
