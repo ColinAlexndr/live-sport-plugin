@@ -1,8 +1,9 @@
 FROM node:22-slim
 
-# Install system deps for Playwright Chromium
+# Install system deps for Playwright Chromium and xvfb for headed browser support
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    xvfb \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -24,5 +25,5 @@ RUN npm run build
 ENV PORT=7000
 EXPOSE 7000
 
-# Start the application
-CMD ["npm", "start"]
+# Start the application with xvfb to provide a virtual display for headed Chromium
+CMD ["xvfb-run", "--auto-servernum", "--server-args=-screen 0 1024x768x24", "npm", "start"]
