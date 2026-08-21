@@ -26,5 +26,9 @@ RUN npm run build
 ENV PORT=7000
 EXPOSE 7000
 
+# Copy the run script
+COPY run.sh ./
+RUN chmod +x run.sh
+
 # Start the application with xvfb to provide a virtual display for headed Chromium
-CMD ["xvfb-run", "--auto-servernum", "--server-args=-screen 0 1024x768x24", "npm", "start"]
+CMD ["./run.sh"]
