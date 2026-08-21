@@ -53,10 +53,13 @@ class BrowserSnifferService {
           // but this approach bypasses it perfectly without bothering the user.
           this._browser = await chromium.launch({
             headless: false,
+            env: { ...process.env, DISPLAY: process.env.DISPLAY || ':99' },
             args: [
               '--window-position=-32000,-32000',
               '--disable-blink-features=AutomationControlled',
               '--no-sandbox',
+              '--disable-dev-shm-usage',
+              '--disable-gpu',
               '--disable-web-security',
             ]
           });
