@@ -5,19 +5,13 @@
 services:
   - type: web
     name: nuvio-live-sports
-    runtime: node
-    plan: free          # Free tier — no credit card needed
-    region: oregon      # US West — closest to most CDNs for Streamed.pk
-
-    # Build step: install dependencies + Playwright Chromium browser binary
-    buildCommand: npm install && npx playwright install --with-deps chromium
-
-    # Start the server
-    startCommand: npm start
+    env: docker
+    plan: free          # Free tier - no credit card needed
+    region: oregon      # US West - closest to most CDNs for Streamed.pk
 
     # Environment variables
     envVars:
       - key: PORT
-        value: 10000     # Render's internal port (Render routes HTTPS → this port)
+        value: 10000     # Render's internal port (Render routes HTTPS   this port)
       - key: NODE_ENV
         value: production
