@@ -9,6 +9,7 @@ class TimStreamsProvider extends BaseProvider {
     super(opts);
     this.name = 'TimStreams';
     this.apiUrl = 'https://timstreams.st/api/live-upcoming';
+    this.browserSnifferService = opts.browserSnifferService;
     
     this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async () => {
       const res = await axios.get(this.apiUrl, { timeout: 7000 });
@@ -75,7 +76,6 @@ class TimStreamsProvider extends BaseProvider {
 
   /**
    * Decode a XOR-obfuscated script block from TimStreams embed pages.
-   * Pattern: var XXXX=[nums],YYYY=key1,ZZZZ=key2 → decoded via (char ^ key1 - key2 + 256) % 256
    */
   decodeObfuscatedScript(html) {
     const match = html.match(/var\s+(\w+)\s*=\s*\[([\d,]+)\]\s*,\s*(\w+)\s*=\s*(\d+)\s*,\s*(\w+)\s*=\s*(\d+)/);
@@ -93,7 +93,7 @@ class TimStreamsProvider extends BaseProvider {
   }
 
   /**
-   * Extract the signed m3u8 URL from a TimStreams embed page.
+   * Extract the signed m3u8 URL from a TimStreams embed page natively.
    */
   async extractM3u8(embedUrl) {
     try {
@@ -114,9 +114,7 @@ class TimStreamsProvider extends BaseProvider {
       const urlMatch = decoded.match(/https?:\/\/[^"]+\.m3u8/);
       if (!urlMatch) return null;
 
-      // Extract the referer domain from the embed URL for proxyHeaders
       const embedDomain = new URL(embedUrl).origin;
-
       return { m3u8: urlMatch[0], referer: embedDomain };
     } catch (e) {
       console.warn(`[${this.name}] m3u8 extraction failed for ${embedUrl}:`, e.message);
@@ -132,7 +130,6 @@ class TimStreamsProvider extends BaseProvider {
       const matches = await this.getMatches();
       const match = matches.find(m => m.id === `ts_${sourceId}` || m.sources.some(s => s.id === sourceId));
 
-      // Collect all embed URLs for this match
       let embedUrls = [];
       if (match) {
         embedUrls = match.sources
@@ -144,42 +141,49 @@ class TimStreamsProvider extends BaseProvider {
         embedUrls = [{ name: sourceId, url: `https://logic.icelanders.st/embed/${sourceId}` }];
       }
 
-      // Try to extract m3u8 from each embed URL
       for (const embed of embedUrls) {
-        const result = await this.extractM3u8(embed.url);
+        let m3u8 = null;
+        let referer = new URL(embed.url).origin;
+        
+        // 1. Try native decryption
+        const nativeResult = await this.extractM3u8(embed.url);
+        if (nativeResult) {
+            m3u8 = nativeResult.m3u8;
+            referer = nativeResult.referer;
+        } else {
+            // 2. Fallback to Sniffer
+            console.log(`[${this.name}] 🟡 Native decryption failed for ${embed.url}, falling back to Playwright Sniffer...`);
+            if (this.browserSnifferService) {
+                try {
+                    const sniffedUrl = await this.browserSnifferService.sniff(embed.url, { referer: 'https://timstreams.st/' });
+                    if (sniffedUrl) {
+                        m3u8 = sniffedUrl;
+                    }
+                } catch (err) {
+                    console.warn(`[${this.name}] Sniffer failed: ${err.message}`);
+                }
+            }
+        }
 
-        if (result) {
-          const { getCfProxyUrl } = require('./BaseProvider');
-          const cfProxyUrl = getCfProxyUrl();
-
-          let proxyUrl;
-          if (cfProxyUrl) {
-            console.log(`[Proxy] Using CF edge proxy for TimStreams match: ${embed.name}`);
-            const proxyUri = new URL(cfProxyUrl);
-            proxyUri.searchParams.set('url', result.m3u8);
-            proxyUri.searchParams.set('referer', result.referer + '/');
-            proxyUri.searchParams.set('origin', result.referer);
-            proxyUrl = proxyUri.toString();
-          } else {
-            console.log(`[Proxy] Using internal fallback for TimStreams match: ${embed.name}`);
-            // Route through Nuvio's internal HLS proxy to enforce User-Agent
-            proxyUrl = `/api/hls/playlist.m3u8?url=${encodeURIComponent(result.m3u8)}&referer=${encodeURIComponent(result.referer + '/')}&origin=${encodeURIComponent(result.referer)}`;
-          }
-          
+        if (m3u8) {
+          const proxyUrl = this.getStreamProxyUrl(m3u8, referer + "/", referer);
           streams.push(new StreamEntity({
-            name: cfProxyUrl ? `TimStreams (CF Edge)` : `TimStreams`,
-            title: embed.name || `TimStreams Stream`,
+            name: `TimStreams`,
+            title: `[Direct] ${embed.name || 'TimStreams Stream'}`,
             url: proxyUrl,
+            behaviorHints: {
+              notWebReady: true
+            },
             resolution: 'HD'
           }));
-        } else {
-          // Fallback to web player
-          streams.push(new StreamEntity({
-            name: `Nuvio Web Player`,
-            title: `TimStreams (${embed.name}) (Web)`,
-            externalUrl: `/watch?url=${encodeURIComponent(embed.url)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
-          }));
         }
+        
+        // Always add web fallback
+        streams.push(new StreamEntity({
+          name: `Nuvio Web Player`,
+          title: `TimStreams (${embed.name}) (Web)`,
+          externalUrl: `/watch?url=${encodeURIComponent(embed.url)}&title=${encodeURIComponent(matchTitle || 'Live Event')}`
+        }));
       }
     } catch (err) {
       console.error(`[${this.name}] resolveStream failed for ${sourceId}:`, err.message);

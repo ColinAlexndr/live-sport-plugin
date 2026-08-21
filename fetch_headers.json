@@ -1,0 +1,12 @@
+{
+  "access-control-expose-headers": "goat",
+  "cache-control": "public, max-age=60",
+  "content-encoding": "gzip",
+  "goat": "NOSCRPSqCxDNUoGtbRbVPjWQIFOYUJOO",
+  "connection": "keep-alive",
+  "access-control-allow-origin": "*",
+  "content-length": "262",
+  "date": "Wed, 19 Aug 2026 19:27:58 GMT",
+  "content-type": "application/octet-stream",
+  "vary": "Accept-Encoding"
+}

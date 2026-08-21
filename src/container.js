@@ -6,6 +6,7 @@ const CronService = require('./services/CronService');
 const M3U8ParserService = require('./services/M3U8ParserService');
 const MatchAggregator = require('./services/MatchAggregator');
 const StreamScoringService = require('./services/StreamScoringService');
+const BrowserSnifferService = require('./services/BrowserSnifferService');
 
 const StreamFreeProvider = require('./providers/StreamFreeProvider');
 const TimStreamsProvider = require('./providers/TimStreamsProvider');
@@ -20,6 +21,8 @@ const StreamSports99Provider = require('./providers/StreamSports99Provider');
 const StreamicProvider = require('./providers/StreamicProvider');
 const PpvDomainsProvider = require('./providers/PpvDomainsProvider');
 const Strims24Provider = require('./providers/Strims24Provider');
+const EmbedIndiaProvider = require('./providers/EmbedIndiaProvider');
+const EmbedStProvider = require('./providers/EmbedStProvider');
 
 const YamlProviderBuilder = require('./services/YamlProviderBuilder');
 
@@ -34,7 +37,9 @@ container.register({
   m3u8Parser: asClass(M3U8ParserService).singleton(),
   cronService: asClass(CronService).singleton(),
   matchAggregator: asClass(MatchAggregator).singleton(),
-  streamScorer: asClass(StreamScoringService).singleton()
+  streamScorer: asClass(StreamScoringService).singleton(),
+  browserSniffer: asClass(BrowserSnifferService).singleton(),
+  browserSnifferService: asClass(BrowserSnifferService).singleton()
 });
 
 // Build dynamic YAML Providers
@@ -56,6 +61,8 @@ container.register({
   streamicProvider: asClass(StreamicProvider).singleton(),
   ppvDomainsProvider: asClass(PpvDomainsProvider).singleton(),
   strims24Provider: asClass(Strims24Provider).singleton(),
+  embedIndiaProvider: asClass(EmbedIndiaProvider).singleton(),
+  embedStProvider: asClass(EmbedStProvider).singleton(),
   yamlProviders: asValue(yamlProviders)
 });
 

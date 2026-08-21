@@ -70,6 +70,8 @@ function shutdownResolver() {
     console.log('Shutting down Stream Resolver...');
     resolverProcess.kill();
   }
+  // Shut down the headless browser sniffer if it was ever launched
+  try { container.resolve('browserSniffer').shutdown(); } catch (_) {}
 }
 process.on('exit', shutdownResolver);
 process.on('SIGINT', () => { shutdownResolver(); process.exit(0); });
@@ -103,6 +105,133 @@ app.get('/api/matches', (req, res) => {
   res.json(matches);
 });
 
+
+// ─── /api/proxy-embed — CORS-safe embed HTML fetcher (SSRF-protected) ────────
+// Fetches the HTML of a sports embed page on behalf of the client browser.
+// The browser cannot fetch embedindia.st directly (CORS), but this endpoint
+// can. It then returns the raw HTML so client-side JS can run the extractor.
+//
+// SSRF mitigation: only allowed embed domains are accepted (CG-05 / D-05).
+
+const ALLOWED_EMBED_DOMAINS = new Set([
+  'embedindia.st',
+  'embedindia.com',
+  'embedsport.xyz',
+  'embed.st',
+  'embedme.top',
+  'embedstream.me',
+  'embedstream.top',
+  'streamtape.com',
+  'sportsurge.net',
+  'vecloud.net',
+  'viprow.me',
+  'vipbox.lc',
+]);
+
+const PROXY_EMBED_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
+
+app.get('/api/proxy-embed', async (req, res) => {
+  const rawUrl = req.query.url;
+  const referer = req.query.referer || '';
+
+  if (!rawUrl) return res.status(400).json({ error: 'Missing ?url parameter' });
+
+  let parsed;
+  try {
+    parsed = new URL(decodeURIComponent(rawUrl));
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return res.status(400).json({ error: 'Invalid URL protocol' });
+    }
+  } catch {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+
+  // SSRF protection: reject any domain not in the allowlist
+  if (!ALLOWED_EMBED_DOMAINS.has(parsed.hostname)) {
+    console.warn(`[proxy-embed] Blocked SSRF attempt for domain: ${parsed.hostname}`);
+    return res.status(403).json({ error: `Domain ${parsed.hostname} is not in the allowed embed domain list.` });
+  }
+
+  try {
+    const headers = {
+      'User-Agent': PROXY_EMBED_UA,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5',
+    };
+    if (referer) headers['Referer'] = referer;
+
+    const upstream = await fetch(parsed.toString(), {
+      headers,
+      signal: AbortSignal.timeout(12000),
+      redirect: 'follow',
+    });
+
+    const html = await upstream.text();
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.send(html);
+  } catch (err) {
+    console.error(`[proxy-embed] Fetch failed for ${parsed.hostname}: ${err.message}`);
+    res.status(502).json({ error: 'Failed to fetch embed page', detail: err.message });
+  }
+});
+
+// Mount the Playwright HLS Proxy for streams that block Node.js and Native clients
+app.get('/api/playwright-m3u8', async (req, res) => {
+  const targetUrl = req.query.url;
+  const referer = req.query.referer || '';
+  if (!targetUrl) return res.status(400).send('Missing url');
+
+  try {
+    const sniffer = container.resolve('browserSniffer');
+    let m3u8Text = await sniffer.fetchThroughBrowser(targetUrl, referer, false);
+
+    const proto = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const currentBaseUrl = host ? `${proto}://${host}` : `http://127.0.0.1:7000`;
+
+    // Rewrite internal paths to use playwright-ts proxy
+    const lines = m3u8Text.split('\n');
+    const rewritten = lines.map(line => {
+      if (line.trim().length === 0 || line.startsWith('#')) return line;
+      try {
+        const absoluteUrl = new URL(line.trim(), targetUrl).href;
+        if (absoluteUrl.endsWith('.m3u8')) {
+          return `${currentBaseUrl}/api/playwright-m3u8?url=${encodeURIComponent(absoluteUrl)}&referer=${encodeURIComponent(referer)}`;
+        }
+        return `${currentBaseUrl}/api/playwright-ts?url=${Buffer.from(absoluteUrl).toString('base64')}&ref=${Buffer.from(referer).toString('base64')}`;
+      } catch (e) {
+        return line;
+      }
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.send(rewritten.join('\n'));
+  } catch (err) {
+    console.error(`[playwright-m3u8] Proxy failed for ${targetUrl}:`, err.message);
+    res.status(502).send('Proxy failed');
+  }
+});
+
+app.get('/api/playwright-ts', async (req, res) => {
+  try {
+    const tsUrl = Buffer.from(req.query.url, 'base64').toString('utf8');
+    const referer = req.query.ref ? Buffer.from(req.query.ref, 'base64').toString('utf8') : '';
+    if (!tsUrl) return res.status(400).send('Missing url');
+
+    const sniffer = container.resolve('browserSniffer');
+    res.setHeader('Content-Type', 'video/mp2t');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    // Stream chunks directly from Playwright to the Express response!
+    await sniffer.streamThroughBrowser(tsUrl, referer, res);
+  } catch (err) {
+    console.error(`[playwright-ts] Proxy failed for ${req.query.url}:`, err.message);
+    if (!res.headersSent) res.status(502).send('Proxy failed');
+  }
+});
 
 // Mount the HLS Video Proxy (routes to the internal resolver on port RESOLVER_PORT)
 app.use('/api', createProxyMiddleware({
@@ -158,6 +287,10 @@ app.use((req, res, next) => {
               modified = true;
             }
             if (s.url && s.url.startsWith('/api/hls')) {
+              s.url = `${currentBaseUrl}${s.url}`;
+              modified = true;
+            }
+            if (s.url && s.url.startsWith('/api/playwright-m3u8')) {
               s.url = `${currentBaseUrl}${s.url}`;
               modified = true;
             }
@@ -269,9 +402,180 @@ app.use(getRouter(builder.getInterface()));
 //   ?title=<encoded match title> shown in the page heading
 
 app.get('/watch', (req, res) => {
-  const embedUrl = req.query.url;
+  const mode     = req.query.mode;
   const title    = req.query.title || 'Live Sports';
 
+  // ─── mode=extract — Client-side HLS extraction for IP-locked embed providers ─
+  // Architecture: browser fetches /api/proxy-embed → runs extractor → plays via hls.js
+  // This ensures all CDN requests originate from the user's own IP (IP consistency).
+  if (mode === 'extract') {
+    const embedUrl  = req.query.embed;
+    const referer   = req.query.referer || '';
+
+    if (!embedUrl) return res.status(400).send('Missing ?embed parameter');
+
+    let safeEmbed, safeReferer;
+    try {
+      const parsedEmbed = new URL(decodeURIComponent(embedUrl));
+      if (!['http:', 'https:'].includes(parsedEmbed.protocol)) {
+        return res.status(400).send('Invalid embed URL protocol');
+      }
+      safeEmbed = parsedEmbed.toString();
+      safeReferer = referer ? new URL(decodeURIComponent(referer)).toString() : safeEmbed;
+    } catch {
+      return res.status(400).send('Invalid embed URL');
+    }
+
+    const safeTitle = String(title)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>\uD83D\uDD34 ${safeTitle} | Extracting Stream</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #0a0a0a; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #fff; }
+    #stage { position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px; }
+    .spinner { width: 52px; height: 52px; border: 4px solid rgba(255,255,255,0.1);
+      border-top-color: #f44; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #status { font-size: 15px; opacity: 0.8; text-align: center; padding: 0 24px; }
+    #title  { font-size: 19px; font-weight: 700; text-align: center; padding: 0 24px; }
+    #error  { display: none; flex-direction: column; align-items: center; gap: 12px; }
+    #error p { font-size: 14px; opacity: 0.6; text-align: center; max-width: 340px; }
+    #open-btn {
+      margin-top: 6px; padding: 10px 24px; background: #f44; color: #fff;
+      border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+    }
+    #video-player { display: none; position: fixed; inset: 0; width: 100%; height: 100%; background: #000; }
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent);
+      padding: 12px 20px; color: #fff; font-size: 14px; font-weight: 600;
+      display: flex; align-items: center; gap: 10px;
+      animation: fadeOut 1s ease 4s forwards;
+    }
+    #topbar .dot { width: 10px; height: 10px; background: #f44; border-radius: 50%;
+      flex-shrink: 0; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    @keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+  <div id="topbar"><span class="dot"></span><span>${safeTitle}</span></div>
+  <video id="video-player" controls autoplay playsinline></video>
+  <div id="stage">
+    <div class="spinner" id="spinner"></div>
+    <p id="title">\uD83D\uDD34 ${safeTitle}</p>
+    <p id="status">Fetching stream&hellip;</p>
+    <div id="error">
+      <p>Could not extract a direct stream from this embed.<br>Try opening it in your browser instead.</p>
+      <a id="open-btn" href="${safeEmbed}" target="_blank" rel="noopener noreferrer">Open in Browser</a>
+    </div>
+  </div>
+  <script>
+    (async () => {
+      const embedUrl = ${JSON.stringify(safeEmbed)};
+      const referer  = ${JSON.stringify(safeReferer)};
+      const status   = document.getElementById('status');
+      const spinner  = document.getElementById('spinner');
+      const errorDiv = document.getElementById('error');
+      const video    = document.getElementById('video-player');
+      const stage    = document.getElementById('stage');
+
+      function showError() {
+        spinner.style.display = 'none';
+        status.style.display  = 'none';
+        errorDiv.style.display = 'flex';
+      }
+
+      function playM3u8(url) {
+        stage.style.display = 'none';
+        video.style.display = 'block';
+        if (Hls.isSupported()) {
+          const hls = new Hls({ liveSyncDurationCount: 3, liveMaxLatencyDurationCount: 5, lowLatencyMode: true });
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+          hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) { stage.style.display = 'flex'; video.style.display = 'none'; showError(); } });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = url;
+          video.addEventListener('loadedmetadata', () => video.play().catch(() => {}));
+        } else {
+          showError();
+        }
+      }
+
+      // ── Extraction patterns (client-side mirror of EmbedExtractorChain) ──
+      function extractM3u8(html) {
+        // Pattern A — plain M3U8 URL in source
+        const a = html.match(/(https?:\\/\\/[^\\s"'<>]+\\.m3u8[^\\s"'<>]*)/i);
+        if (a) return a[1];
+
+        // Pattern D — JSON player config keys
+        for (const k of ['source','file','src','url','hls','stream','streamUrl','hlsUrl']) {
+          const d = html.match(new RegExp('["\\']' + k + '["\\'\\\\]\\\\s*:\\\\s*["\\'\\\\](https?:\\\\/\\\\/[^"\\'+]+\\\\.m3u8[^"\\'+]*)["\\'\\\\]', 'i'));
+          if (d) return d[1];
+        }
+
+        // Pattern B — atob() encoded URL
+        const atobRe = /atob\\s*\\(\\s*["']([A-Za-z0-9+\\/=_-]{20,})["']\\s*\\)/g;
+        let m;
+        while ((m = atobRe.exec(html)) !== null) {
+          try {
+            const decoded = atob(m[1].replace(/-/g,'+').replace(/_/g,'/'));
+            if (decoded.includes('.m3u8')) {
+              const u = decoded.match(/(https?:\\/\\/[^\\s"'<>]+\\.m3u8[^\\s"'<>]*)/i);
+              if (u) return u[1];
+            }
+          } catch(_) {}
+        }
+        return null;
+      }
+
+      try {
+        status.textContent = 'Fetching embed page\u2026';
+        const proxyUrl = '/api/proxy-embed?url=' + encodeURIComponent(embedUrl) + '&referer=' + encodeURIComponent(referer);
+        const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
+
+        if (!resp.ok) {
+          console.warn('[extract] proxy-embed returned', resp.status);
+          showError();
+          return;
+        }
+
+        status.textContent = 'Analysing stream\u2026';
+        const html = await resp.text();
+        const m3u8 = extractM3u8(html);
+
+        if (m3u8) {
+          status.textContent = 'Starting playback\u2026';
+          playM3u8(m3u8);
+        } else {
+          console.warn('[extract] No M3U8 URL found in embed HTML');
+          showError();
+        }
+      } catch (err) {
+        console.error('[extract] Error:', err);
+        showError();
+      }
+    })();
+  </script>
+</body>
+</html>`);
+  }
+
+  // ─── Default mode — iframe embed proxy (original behaviour, unchanged) ────
+  const embedUrl = req.query.url;
   if (!embedUrl) {
     return res.status(400).send('Missing ?url parameter');
   }

@@ -9,8 +9,8 @@ services:
     plan: free          # Free tier — no credit card needed
     region: oregon      # US West — closest to most CDNs for Streamed.pk
 
-    # Build step: install dependencies
-    buildCommand: npm install
+    # Build step: install dependencies + Playwright Chromium browser binary
+    buildCommand: npm install && npx playwright install --with-deps chromium
 
     # Start the server
     startCommand: npm start

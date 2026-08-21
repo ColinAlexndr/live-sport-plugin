@@ -1,18 +1,36 @@
 const BaseProvider = require('./BaseProvider');
 const MatchEntity = require('../domain/MatchEntity');
 const StreamEntity = require('../domain/StreamEntity');
+const { extract } = require('../services/EmbedExtractorChain');
+
+const PPV_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
 
 class PpvDomainsProvider extends BaseProvider {
   constructor(opts) {
     super(opts);
     this.name = 'PpvDomains';
+    this.browserSnifferService = opts.browserSnifferService;
     this.apiUrl = 'https://api.ppv.st/api/streams';
     // Wrap the fetch with our circuit breaker
     this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async () => {
-      const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' };
-      const res = await fetch(this.apiUrl, { headers, signal: AbortSignal.timeout(7000) });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return await res.json();
+      const container = require('../container');
+      try {
+        const sniffer = container.resolve('browserSniffer');
+        const jsonStr = await sniffer.fetchThroughBrowser(this.apiUrl, 'https://ppv.st/');
+        return JSON.parse(jsonStr);
+      } catch (err) {
+        console.warn(`[PpvDomains] BrowserSniffer failed, falling back to node fetch...`);
+        const headers = { 'User-Agent': PPV_UA };
+        const res = await fetch(this.apiUrl, { headers, signal: AbortSignal.timeout(7000) });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+      }
+    });
+
+    this._fetchEmbed = this.circuitBreaker.wrap(`${this.name}_fetchEmbed`, async (url) => {
+      const container = require('../container');
+      const sniffer = container.resolve('browserSniffer');
+      return await sniffer.fetchThroughBrowser(url, new URL(url).origin + '/');
     });
   }
 
@@ -37,6 +55,8 @@ class PpvDomainsProvider extends BaseProvider {
                team2 = parts[1].trim();
             }
 
+            const isEmbedSt = s.iframe && s.iframe.includes('embed');
+
             matches.push(new MatchEntity({
               id: 'ppv_' + id,
               title: s.name,
@@ -47,7 +67,12 @@ class PpvDomainsProvider extends BaseProvider {
               team1: team1,
               team2: team2,
               thumbnail_url: s.poster,
-              sources: [{ source: 'ppvdomains', id: id, iframe: s.iframe }]
+              sources: [{ 
+                source: isEmbedSt ? 'embedst' : 'ppvdomains', 
+                id: id, 
+                iframe: s.iframe,
+                embedUrl: s.iframe
+              }]
             }));
           });
         }
@@ -59,18 +84,80 @@ class PpvDomainsProvider extends BaseProvider {
   }
 
   async resolveStream(sourceId, matchCategory, matchTitle, extraData) {
+    const streams = [];
     try {
       if (!extraData || !extraData.iframe) return [];
       
-      return [new StreamEntity({
+      const watchUrl = extraData.iframe;
+
+      // CF Worker edge-scraper removed per user request
+
+      // ─── Attempt direct M3U8 extraction from the embed page ────────────
+      if (streams.length === 0) {
+        try {
+          const html = await this._fetchEmbed.fire(watchUrl);
+          let resultUrl = null;
+          let resultPattern = null;
+          
+          const result = extract(html);
+          if (result && result.url) {
+            resultUrl = result.url;
+            resultPattern = result.pattern;
+          } else {
+            console.log(`[${this.name}] 🟡 Static extraction failed for ${watchUrl}, falling back to Playwright Sniffer...`);
+            const sniffer = this.browserSnifferService;
+            const embedOrigin = new URL(watchUrl).origin;
+            const sniffedUrl = await sniffer.sniff(watchUrl, { referer: embedOrigin + '/' });
+            if (sniffedUrl) {
+              resultUrl = sniffedUrl;
+              resultPattern = 'Browser Sniffer';
+            }
+          }
+
+          if (resultUrl) {
+            const embedOrigin = new URL(watchUrl).origin;
+            console.log(`[${this.name}] ⚡ Direct extraction succeeded via ${resultPattern} for: ${matchTitle}`);
+            
+            let finalUrl = resultUrl;
+            if (resultPattern === 'Browser Sniffer') {
+               finalUrl = `/api/playwright-m3u8?url=${encodeURIComponent(resultUrl)}&referer=${encodeURIComponent(embedOrigin + '/')}`;
+            } else {
+               finalUrl = this.getStreamProxyUrl(resultUrl, embedOrigin + '/', embedOrigin);
+            }
+            
+            streams.push(new StreamEntity({
+              name: 'PPV Domains',
+              title: `[Direct] Watch natively`,
+              url: finalUrl,
+              resolution: 'HD',
+              behaviorHints: {
+                notWebReady: true,
+                proxyHeaders: {
+                  request: {
+                    'User-Agent': PPV_UA,
+                    'Referer': embedOrigin + '/',
+                    'Origin': embedOrigin,
+                  },
+                },
+              },
+            }));
+          }
+        } catch (err) {
+          console.warn(`[${this.name}] Direct extraction failed for ${sourceId}: ${err.message}`);
+        }
+      }
+
+      // ─── Web player fallback (always appended) ──────────────────────────
+      streams.push(new StreamEntity({
         name: 'PPV Domains',
         title: `Watch via Web Browser (PPV)`,
-        externalUrl: extraData.iframe
-      })];
+        externalUrl: watchUrl
+      }));
+      
     } catch (error) {
       console.error(`[${this.name}] resolveStream failed for ${sourceId}:`, error.message);
-      return [];
     }
+    return streams;
   }
 }
 

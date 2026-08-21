@@ -18,7 +18,7 @@ async function handleStream(type, id, config) {
 
   const streams = [];
 
-  const SOURCE_PRIORITY = { admin: 1, echo: 1, golf: 1, delta: 1, 'watchfooty': 2, 'cdnlive': 3, 'streamsports99': 4, 'streamic': 5, 'ppvdomains': 6, 'strims24': 7, 'streamfree': 8, 'timstreams': 9, 'bintv': 10, 'ntv': 11, 'sportyhunter': 12, 'streamsports': 13, 'iptv-org': 14 };
+  const SOURCE_PRIORITY = { admin: 1, echo: 1, golf: 1, delta: 1, 'watchfooty': 2, 'cdnlive': 3, 'streamsports99': 4, 'streamic': 5, 'ppvdomains': 6, 'strims24': 7, 'streamfree': 8, 'timstreams': 9, 'bintv': 10, 'ntv': 11, 'sportyhunter': 12, 'streamsports': 13, 'iptv-org': 14, 'embedindia': 15 };
   const sortedSources = [...match.sources].sort((a, b) => {
     // If a source isn't in the list, but it's not one of our known fallback providers, 
     // it's likely a new Streamed.pk source. Give it priority 1.5 so it stays near the top.
@@ -41,7 +41,7 @@ async function handleStream(type, id, config) {
   let activeSources = sortedSources;
   if (config && typeof config.sources === 'string' && config.sources !== 'none') {
     const enabled = config.sources.split(',');
-    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org'];
+    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org', 'embedindia', 'embedst'];
     activeSources = sortedSources.filter(src => {
       if (src.source.startsWith('yaml_')) return true;
       const isFallback = KNOWN_FALLBACKS.includes(src.source);
@@ -53,7 +53,9 @@ async function handleStream(type, id, config) {
   } else {
     // If no config is passed (default install), we still need to filter out Streamed.pk
     // since the source is completely removed.
-    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org'];
+    // NOTE: 'embedindia' is intentionally excluded from the default active set.
+    //       It is opt-in only via config.sources (see multi-agent review CG-01 / D-03).
+    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org', 'embedst'];
     activeSources = sortedSources.filter(src => {
       if (src.source.startsWith('yaml_')) return true;
       return KNOWN_FALLBACKS.includes(src.source);
@@ -116,6 +118,12 @@ async function handleStream(type, id, config) {
             }
           }
         }];
+      } else if (sourceName === 'embedindia') {
+        const provider = container.resolve('embedIndiaProvider');
+        resStreams = await provider.resolveStream(src.id, match.category, match.title, src);
+      } else if (sourceName === 'embedst') {
+        const provider = container.resolve('embedStProvider');
+        resStreams = await provider.resolveStream(src.id, match.category, match.title, src);
       } else if (sourceName.startsWith('yaml_')) {
         const yamlProviders = container.resolve('yamlProviders');
         const pName = sourceName.replace('yaml_', '');
@@ -181,7 +189,8 @@ async function handleStream(type, id, config) {
     streamfree: 'StreamFree', timstreams: 'TimStreams', bintv: 'BinTV',
     ntv: 'NTV', sportyhunter: 'SportyHunter', streamsports: 'StreamSports',
     'iptv-org': 'Direct IPTV', 'streamsports99': 'StreamSports99',
-    'ppvdomains': 'PPV Domains', 'streamic': 'Streamic', 'strims24': 'Strims24'
+    'ppvdomains': 'PPV Domains', 'streamic': 'Streamic', 'strims24': 'Strims24',
+    'embedindia': 'EmbedIndia', 'embedst': 'Embed.st'
   };
 
   streams.forEach(s => {
@@ -253,12 +262,14 @@ async function handleStream(type, id, config) {
       else if (providerName === 'SportyHunter') referer = 'https://sportyhunter.xyz/';
       
       if (referer) {
-        s.behaviorHints.proxyHeaders = {
-          request: {
-            "Referer": referer,
-            "Origin": referer
-          }
-        };
+        if (!s.behaviorHints.proxyHeaders) {
+          s.behaviorHints.proxyHeaders = {
+            request: {
+              "Referer": referer,
+              "Origin": referer
+            }
+          };
+        }
       }
     }
     
