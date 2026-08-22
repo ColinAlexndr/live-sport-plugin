@@ -31,6 +31,12 @@ jobs:
             api_token: CF_API_TOKEN_4
             worker_name: spring-brook-5c1e
 
+          # 5th Cloudflare account
+          - proxy_num: 5
+            account_id: CF_ACCOUNT_ID_5
+            api_token: CF_API_TOKEN_5
+            worker_name: falling-unit-ffa6
+
     steps:
       - uses: actions/checkout@v4
 
