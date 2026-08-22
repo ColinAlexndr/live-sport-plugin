@@ -24,6 +24,12 @@ jobs:
             account_id: CF_ACCOUNT_ID_3
             api_token: CF_API_TOKEN_3
             worker_name: nuvio-proxy3
+            
+          # 4th Cloudflare account
+          - proxy_num: 4
+            account_id: CF_ACCOUNT_ID_4
+            api_token: CF_API_TOKEN_4
+            worker_name: spring-brook-5c1e
 
     steps:
       - uses: actions/checkout@v4

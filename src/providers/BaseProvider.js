@@ -3,6 +3,8 @@ const CF_PROXY_POOL = [
   'https://nuvio-proxy.odedararaj456.workers.dev',
   'https://nuvio-proxy2.rajodedara360.workers.dev',
   'https://nuvio-proxy3.raj-odedara.workers.dev',
+  'https://bitter-emu-5954.rajhodedara.deno.net',
+  'https://spring-brook-5c1e.rajodedara456.workers.dev',
 ];
 
 // Pick a random proxy from the pool
