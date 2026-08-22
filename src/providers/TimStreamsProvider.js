@@ -132,9 +132,14 @@ class TimStreamsProvider extends BaseProvider {
 
       let embedUrls = [];
       if (match) {
-        embedUrls = match.sources
-          .filter(s => s.url)
-          .map(s => ({ name: s.id, url: s.url }));
+        const specific = match.sources.find(s => s.id === sourceId && s.url);
+        if (specific) {
+          embedUrls = [{ name: specific.id, url: specific.url }];
+        } else {
+          embedUrls = match.sources
+            .filter(s => s.url)
+            .map(s => ({ name: s.id, url: s.url }));
+        }
       }
 
       if (embedUrls.length === 0) {
@@ -166,13 +171,19 @@ class TimStreamsProvider extends BaseProvider {
         }
 
         if (m3u8) {
-          const proxyUrl = this.getStreamProxyUrl(m3u8, referer + "/", referer);
           streams.push(new StreamEntity({
             name: `TimStreams`,
             title: `[Direct] ${embed.name || 'TimStreams Stream'}`,
-            url: proxyUrl,
+            url: m3u8,
             behaviorHints: {
-              notWebReady: true
+              notWebReady: true,
+              proxyHeaders: {
+                request: {
+                  "Referer": `${referer}/`,
+                  "Origin": referer,
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+                }
+              }
             },
             resolution: 'HD'
           }));
