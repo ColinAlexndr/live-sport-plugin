@@ -27,5 +27,18 @@ jobs:
             # 3. Install new dependencies
             npm install
             
-            # 4. Restart the systemd service
+            # 4. Build the project
+            npm run build
+            
+            # 5. Restart the systemd service
             sudo systemctl restart nuvio.service
+            
+            # 6. Verify that the service started successfully
+            sleep 2
+            if sudo systemctl is-active --quiet nuvio.service; then
+              echo "✅ Nuvio service restarted successfully and is active!"
+            else
+              echo "❌ ERROR: Nuvio service failed to start."
+              sudo systemctl status nuvio.service --no-pager
+              exit 1
+            fi
