@@ -18,8 +18,7 @@ jobs:
           port: 22
           script: |
             # 1. Navigate to the deployment folder
-            # IMPORTANT: Update this path once he gives it to you!
-            cd /PATH_GOES_HERE
+            cd /home/mo/live-sport-plugin
             
             # 2. Pull the latest code
             git fetch origin
@@ -28,6 +27,5 @@ jobs:
             # 3. Install new dependencies
             npm install
             
-            # 4. Restart the app with PM2 and memory limit (4GB)
-            # This checks if the app is already running. If yes, it restarts it. If no, it starts it.
-            pm2 restart nuvio-sports --update-env || pm2 start src/index.js --name nuvio-sports --max-memory-restart 4G
+            # 4. Restart the systemd service
+            sudo systemctl restart nuvio.service
