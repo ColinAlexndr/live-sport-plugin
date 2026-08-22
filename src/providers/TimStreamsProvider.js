@@ -50,11 +50,18 @@ class TimStreamsProvider extends BaseProvider {
 
         const sources = (s.streams || [])
           .filter(st => !st.vip)
-          .map(st => ({
-            source: 'timstreams',
-            id: st.name || 'Stream',
-            url: st.url
-          }));
+          .map(st => {
+            let id = st.name || 'Stream';
+            if (st.url) {
+               id = Buffer.from(st.url).toString('hex');
+            }
+            return {
+              source: 'timstreams',
+              id: id,
+              name: st.name || 'Stream',
+              url: st.url
+            };
+          });
 
         if (sources.length > 0) {
           matches.push(new MatchEntity({
@@ -127,18 +134,27 @@ class TimStreamsProvider extends BaseProvider {
     const StreamEntity = require('../domain/StreamEntity');
 
     try {
-      const matches = await this.getMatches();
-      const match = matches.find(m => m.id === `ts_${sourceId}` || m.sources.some(s => s.id === sourceId));
-
       let embedUrls = [];
-      if (match) {
-        const specific = match.sources.find(s => s.id === sourceId && s.url);
-        if (specific) {
-          embedUrls = [{ name: specific.id, url: specific.url }];
-        } else {
-          embedUrls = match.sources
-            .filter(s => s.url)
-            .map(s => ({ name: s.id, url: s.url }));
+      try {
+        const decoded = Buffer.from(sourceId, 'hex').toString('utf-8');
+        if (decoded.startsWith('http')) {
+           embedUrls = [{ name: 'Stream', url: decoded }];
+        }
+      } catch(e) {}
+
+      if (embedUrls.length === 0) {
+        const matches = await this.getMatches();
+        const match = matches.find(m => m.id === `ts_${sourceId}` || m.sources.some(s => s.id === sourceId));
+
+        if (match) {
+          const specific = match.sources.find(s => s.id === sourceId && s.url);
+          if (specific) {
+            embedUrls = [{ name: specific.name || specific.id, url: specific.url }];
+          } else {
+            embedUrls = match.sources
+              .filter(s => s.url)
+              .map(s => ({ name: s.name || s.id, url: s.url }));
+          }
         }
       }
 

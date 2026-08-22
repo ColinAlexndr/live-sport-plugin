@@ -1,6 +1,6 @@
 class MatchAggregator {
-  constructor({ streamFreeProvider, timStreamsProvider, binTvProvider, ntvProvider, iptvOrgProvider, sportyHunterProvider, watchFootyProvider, cdnLiveProvider, streamSports99Provider, ppvDomainsProvider, streamicProvider, strims24Provider, cacheService, yamlProviders }) {
-    this.providers = [streamFreeProvider, timStreamsProvider, binTvProvider, ntvProvider, iptvOrgProvider, sportyHunterProvider, watchFootyProvider, cdnLiveProvider, streamSports99Provider, ppvDomainsProvider, streamicProvider, strims24Provider, ...(yamlProviders || [])];
+  constructor({ streamFreeProvider, timStreamsProvider, binTvProvider, ntvProvider, iptvOrgProvider, sportyHunterProvider, watchFootyProvider, cdnLiveProvider, streamSports99Provider, ppvDomainsProvider, streamicProvider, strims24Provider, beinArabicProvider, cacheService, yamlProviders }) {
+    this.providers = [streamFreeProvider, timStreamsProvider, binTvProvider, ntvProvider, iptvOrgProvider, sportyHunterProvider, watchFootyProvider, cdnLiveProvider, streamSports99Provider, ppvDomainsProvider, streamicProvider, strims24Provider, beinArabicProvider, ...(yamlProviders || [])];
     this.cacheService = cacheService;
   }
 
@@ -9,6 +9,7 @@ class MatchAggregator {
       return false;
     }
     if (e1.id && e1.id === e2.id) return true;
+    if (e1.id && e2.id && (e1.id.startsWith('bein_ar') || e2.id.startsWith('bein_ar'))) return false;
     const d1 = Number(e1.date) || 0;
     const d2 = Number(e2.date) || 0;
     if (d1 && d2 && Math.abs(d1 - d2) > 86400000) return false;
@@ -84,7 +85,7 @@ class MatchAggregator {
     
     const now = Date.now();
     // Smart Trending Engine: Boost popular matches globally, but only if they are actually live or starting soon
-    const TRENDING_KEYWORDS = ['real madrid', 'barcelona', 'manchester', 'arsenal', 'liverpool', 'chelsea', 'bayern', 'psg', 'lakers', 'warriors', 'mcgregor', 'super bowl', 'champions league', 'el clasico', 'f1', 'formula 1', 'grand prix'];
+    const TRENDING_KEYWORDS = ['bein', 'real madrid', 'barcelona', 'manchester', 'arsenal', 'liverpool', 'chelsea', 'bayern', 'psg', 'lakers', 'warriors', 'mcgregor', 'super bowl', 'champions league', 'el clasico', 'f1', 'formula 1', 'grand prix'];
     
     finalMatches.forEach(match => {
       const titleLower = match.title.toLowerCase();

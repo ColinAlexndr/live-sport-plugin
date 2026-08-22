@@ -41,7 +41,7 @@ async function handleStream(type, id, config) {
   let activeSources = sortedSources;
   if (config && typeof config.sources === 'string' && config.sources !== 'none') {
     const enabled = config.sources.split(',');
-    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org', 'embedindia', 'embedst'];
+    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org', 'embedindia', 'embedst', 'BeinArabic'];
     activeSources = sortedSources.filter(src => {
       if (src.source.startsWith('yaml_')) return true;
       const isFallback = KNOWN_FALLBACKS.includes(src.source);
@@ -55,7 +55,7 @@ async function handleStream(type, id, config) {
     // since the source is completely removed.
     // NOTE: 'embedindia' is intentionally excluded from the default active set.
     //       It is opt-in only via config.sources (see multi-agent review CG-01 / D-03).
-    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org', 'embedst'];
+    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'ppvdomains', 'strims24', 'streamfree', 'timstreams', 'bintv', 'ntv', 'sportyhunter', 'streamsports', 'iptv-org', 'embedst', 'BeinArabic'];
     activeSources = sortedSources.filter(src => {
       if (src.source.startsWith('yaml_')) return true;
       return KNOWN_FALLBACKS.includes(src.source);
@@ -124,6 +124,9 @@ async function handleStream(type, id, config) {
       } else if (sourceName === 'embedst') {
         const provider = container.resolve('embedStProvider');
         resStreams = await provider.resolveStream(src.id, match.category, match.title, src);
+      } else if (sourceName === 'BeinArabic') {
+        const provider = container.resolve('beinArabicProvider');
+        resStreams = await provider.resolveStream(src.id, match.category, match.title);
       } else if (sourceName.startsWith('yaml_')) {
         const yamlProviders = container.resolve('yamlProviders');
         const pName = sourceName.replace('yaml_', '');

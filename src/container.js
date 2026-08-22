@@ -23,6 +23,7 @@ const PpvDomainsProvider = require('./providers/PpvDomainsProvider');
 const Strims24Provider = require('./providers/Strims24Provider');
 const EmbedIndiaProvider = require('./providers/EmbedIndiaProvider');
 const EmbedStProvider = require('./providers/EmbedStProvider');
+const BeinArabicProvider = require('./providers/BeinArabicProvider');
 
 const YamlProviderBuilder = require('./services/YamlProviderBuilder');
 
@@ -63,6 +64,7 @@ container.register({
   strims24Provider: asClass(Strims24Provider).singleton(),
   embedIndiaProvider: asClass(EmbedIndiaProvider).singleton(),
   embedStProvider: asClass(EmbedStProvider).singleton(),
+  beinArabicProvider: asClass(BeinArabicProvider).singleton(),
   yamlProviders: asValue(yamlProviders)
 });
 
