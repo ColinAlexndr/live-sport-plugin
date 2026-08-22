@@ -25,6 +25,18 @@ const { handleStream } = require('./streams');
 const { PORT, BASE_URL } = require('./config');
 const container = require('./container');
 
+// ─── Global Crash Protections (Prevents Unhandled Playwright Errors from killing Nuvio) ──
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught Exception:', err.message);
+  // Do not exit the process, let it recover
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  const msg = reason ? (reason.message || reason) : 'Unknown reason';
+  console.error('[FATAL] Unhandled Rejection:', msg);
+  // Do not exit the process, let it recover
+});
+
 // Removed global User-Agent fix because it causes ECONNRESET on Streamed.pk
 
 // ─── Spawn the Streamed.pk Resolver ───────────────────────────────────────────

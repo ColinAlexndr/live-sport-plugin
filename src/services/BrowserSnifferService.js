@@ -61,6 +61,11 @@ class BrowserSnifferService {
               '--disable-dev-shm-usage',
               '--disable-gpu',
               '--disable-web-security',
+              '--disk-cache-size=1',
+              '--media-cache-size=1',
+              '--disable-application-cache',
+              '--disable-gpu-program-cache',
+              '--disable-gpu-shader-disk-cache'
             ]
           });
           
@@ -71,6 +76,7 @@ class BrowserSnifferService {
         this._browser.on('disconnected', () => {
           console.warn('[BrowserSniffer] ⚠️ Browser disconnected — will relaunch on next sniff');
           this._browser = null;
+          this._proxyContext = null;
         });
 
         console.log('[BrowserSniffer] ✅ Chromium ready');
@@ -286,83 +292,124 @@ class BrowserSnifferService {
     return page;
   }
 
-  // ── Fetch content via Playwright (Bypass WAF) ────────────────────────
   async fetchThroughBrowser(targetUrl, referer, isArrayBuffer = false) {
     if (LOW_MEMORY || this._disabled) throw new Error('BrowserSniffer disabled');
     
     const page = await this._getProxyPage(referer);
 
-    if (isArrayBuffer) {
-      const base64Str = await page.evaluate(async ({ tUrl }) => {
-        const res = await fetch(tUrl, { cache: 'no-store' });
-        const buf = await res.arrayBuffer();
-        const bytes = new Uint8Array(buf);
-        const chunkSize = 8192;
-        let binary = '';
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-          binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    try {
+      if (isArrayBuffer) {
+        const base64Str = await page.evaluate(async ({ tUrl }) => {
+          const res = await fetch(tUrl, { cache: 'no-store' });
+          const buf = await res.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          const chunkSize = 8192;
+          let binary = '';
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+          }
+          return btoa(binary);
+        }, { tUrl: targetUrl });
+        return Buffer.from(base64Str, 'base64');
+      } else {
+        return await page.evaluate(async ({ tUrl }) => {
+          const res = await fetch(tUrl, { cache: 'no-store' });
+          return await res.text();
+        }, { tUrl: targetUrl });
+      }
+    } catch (err) {
+      console.error(`[BrowserSniffer] fetchThroughBrowser failed for ${targetUrl}:`, err.message);
+      if (page && page.isClosed() && this._proxyPages) {
+        for (const key in this._proxyPages) {
+          if (this._proxyPages[key] === page) delete this._proxyPages[key];
         }
-        return btoa(binary);
-      }, { tUrl: targetUrl });
-      return Buffer.from(base64Str, 'base64');
-    } else {
-      return await page.evaluate(async ({ tUrl }) => {
-        const res = await fetch(tUrl, { cache: 'no-store' });
-        return await res.text();
-      }, { tUrl: targetUrl });
+      }
+      throw err;
     }
   }
 
   async streamThroughBrowser(targetUrl, referer, expressRes) {
-    const page = await this._getProxyPage(referer);
-    
-    // Ensure we have exposed the stream function on this page
-    if (!page._isStreamExposed) {
-      page._streamCallbacks = new Map();
-      await page.exposeFunction('_nodeStreamChunk', (reqId, b64Data) => {
-        const cb = page._streamCallbacks.get(reqId);
-        if (cb) cb(b64Data);
-      });
-      page._isStreamExposed = true;
+    if (LOW_MEMORY || this._disabled) {
+      if (!expressRes.headersSent) expressRes.status(502).end();
+      return;
     }
 
-    const reqId = Math.random().toString(36).substring(7);
-    
-    // Setup the callback for Node to write to Express
-    page._streamCallbacks.set(reqId, (b64Data) => {
-      if (b64Data === 'DONE') {
-        expressRes.end();
-        page._streamCallbacks.delete(reqId);
-      } else {
-        expressRes.write(Buffer.from(b64Data, 'base64'));
-      }
-    });
-
-    // Start streaming from the browser
-    page.evaluate(async ({ tUrl, reqId }) => {
-      try {
-        const res = await fetch(tUrl, { cache: 'no-store' });
-        const reader = res.body.getReader();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          // Convert chunk to base64
-          const chunkSize = 8192;
-          let binary = '';
-          for (let i = 0; i < value.length; i += chunkSize) {
-            binary += String.fromCharCode.apply(null, value.subarray(i, i + chunkSize));
-          }
-          await window._nodeStreamChunk(reqId, btoa(binary));
+    let page;
+    try {
+      page = await this._getProxyPage(referer);
+      
+      // Ensure we have exposed the stream function on this page
+      if (!page._isStreamExposed) {
+        page._streamCallbacks = new Map();
+        try {
+          await page.exposeFunction('_nodeStreamChunk', (reqId, b64Data) => {
+            if (!page || !page._streamCallbacks) return;
+            const cb = page._streamCallbacks.get(reqId);
+            if (cb) {
+              try { cb(b64Data); } catch (e) {}
+            }
+          });
+          page._isStreamExposed = true;
+        } catch (e) {
+          // If page was closed during expose
+          throw new Error('Failed to expose stream function: ' + e.message);
         }
-        await window._nodeStreamChunk(reqId, 'DONE');
-      } catch (e) {
-        await window._nodeStreamChunk(reqId, 'DONE');
       }
-    }, { tUrl: targetUrl, reqId }).catch(() => {
-       expressRes.end();
-       page._streamCallbacks.delete(reqId);
-    });
+
+      const reqId = Math.random().toString(36).substring(7);
+      
+      // Setup the callback for Node to write to Express
+      page._streamCallbacks.set(reqId, (b64Data) => {
+        if (b64Data === 'DONE') {
+          if (!expressRes.writableEnded) expressRes.end();
+          page._streamCallbacks.delete(reqId);
+        } else {
+          if (!expressRes.writableEnded) expressRes.write(Buffer.from(b64Data, 'base64'));
+        }
+      });
+
+      // Handle client disconnect gracefully
+      expressRes.on('close', () => {
+        if (page && page._streamCallbacks) {
+          page._streamCallbacks.delete(reqId);
+        }
+      });
+
+      // Start streaming from the browser
+      await page.evaluate(async ({ tUrl, reqId }) => {
+        try {
+          const res = await fetch(tUrl, { cache: 'no-store' });
+          const reader = res.body.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            // Convert chunk to base64
+            const chunkSize = 8192;
+            let binary = '';
+            for (let i = 0; i < value.length; i += chunkSize) {
+              binary += String.fromCharCode.apply(null, value.subarray(i, i + chunkSize));
+            }
+            if (window._nodeStreamChunk) await window._nodeStreamChunk(reqId, btoa(binary));
+          }
+          if (window._nodeStreamChunk) await window._nodeStreamChunk(reqId, 'DONE');
+        } catch (e) {
+          if (window._nodeStreamChunk) await window._nodeStreamChunk(reqId, 'DONE');
+        }
+      }, { tUrl: targetUrl, reqId });
+
+    } catch (err) {
+      console.error(`[BrowserSniffer] streamThroughBrowser failed for ${targetUrl}:`, err.message);
+      if (page && page._streamCallbacks) {
+        // We can't delete by reqId if we never set it, but Map handles it fine.
+      }
+      if (page && page.isClosed() && this._proxyPages) {
+        for (const key in this._proxyPages) {
+          if (this._proxyPages[key] === page) delete this._proxyPages[key];
+        }
+      }
+      if (!expressRes.writableEnded) expressRes.end();
+    }
   }
 
   // ── Graceful shutdown ────────────────────────────────────────────────
