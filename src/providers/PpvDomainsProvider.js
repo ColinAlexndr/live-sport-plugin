@@ -13,18 +13,10 @@ class PpvDomainsProvider extends BaseProvider {
     this.apiUrl = 'https://api.ppv.st/api/streams';
     // Wrap the fetch with our circuit breaker
     this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async () => {
-      const container = require('../container');
-      try {
-        const sniffer = container.resolve('browserSniffer');
-        const jsonStr = await sniffer.fetchThroughBrowser(this.apiUrl, 'https://ppv.st/');
-        return JSON.parse(jsonStr);
-      } catch (err) {
-        console.warn(`[PpvDomains] BrowserSniffer failed, falling back to node fetch...`);
-        const headers = { 'User-Agent': PPV_UA };
-        const res = await fetch(this.apiUrl, { headers, signal: AbortSignal.timeout(7000) });
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        return await res.json();
-      }
+      const headers = { 'User-Agent': PPV_UA };
+      const res = await this.proxyFetch(this.apiUrl, { headers, signal: AbortSignal.timeout(15000) });
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      return await res.json();
     });
 
     this._fetchEmbed = this.circuitBreaker.wrap(`${this.name}_fetchEmbed`, async (url) => {

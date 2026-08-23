@@ -14,16 +14,10 @@ class BinTvProvider extends BaseProvider {
     this.mainUrl = 'https://api.ppv.st/api/streams';
     
     this.fetchMain = this.circuitBreaker.wrap(`${this.name}_fetchMain`, async () => {
-      // Use Playwright to bypass Cloudflare block on api.ppv.st
-      const browser = await this.browserSniffer._ensureBrowser();
-      const page = await browser.newPage();
-      try {
-        await page.goto(this.mainUrl);
-        const data = await page.evaluate(() => JSON.parse(document.body.innerText));
-        return data;
-      } finally {
-        await page.close().catch(()=>{});
-      }
+      const headers = { 'User-Agent': BINTV_UA };
+      const res = await this.proxyFetch(this.mainUrl, { headers, signal: AbortSignal.timeout(15000) });
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      return await res.json();
     });
 
     // Circuit-breaker-wrapped embed HTML fetcher for extraction attempts

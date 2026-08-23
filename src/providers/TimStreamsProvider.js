@@ -12,8 +12,9 @@ class TimStreamsProvider extends BaseProvider {
     this.browserSnifferService = opts.browserSnifferService;
     
     this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async () => {
-      const res = await axios.get(this.apiUrl, { timeout: 7000 });
-      return res.data;
+      const res = await this.proxyFetch(this.apiUrl, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
     });
   }
 

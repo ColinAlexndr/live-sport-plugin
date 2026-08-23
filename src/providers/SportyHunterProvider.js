@@ -13,8 +13,9 @@ class SportyHunterProvider extends BaseProvider {
     this.baseUrl = 'https://sportyhunter.xyz';
     
     this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async () => {
-      const res = await axios.get(this.baseUrl, { timeout: 8000 });
-      return res.data;
+      const res = await this.proxyFetch(this.baseUrl, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.text();
     });
   }
 

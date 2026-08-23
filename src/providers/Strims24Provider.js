@@ -21,7 +21,7 @@ class Strims24Provider extends BaseProvider {
     };
 
     this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async (url, headers = {}) => {
-      const res = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+      const res = await this.proxyFetch(url, { headers, signal: AbortSignal.timeout(15000) });
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return res;
     });

@@ -13,8 +13,9 @@ class NtvProvider extends BaseProvider {
     this.baseUrl = 'http://ntv.cx';
     
     this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async (url) => {
-      const res = await axios.get(url, { timeout: 15000 });
-      return res.data;
+      const res = await this.proxyFetch(url, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.text();
     });
   }
 

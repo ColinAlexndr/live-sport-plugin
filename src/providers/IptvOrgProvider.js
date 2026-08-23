@@ -14,10 +14,10 @@ class IptvOrgProvider extends BaseProvider {
 
     this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async () => {
       const [channelsRes, streamsRes] = await Promise.all([
-        axios.get(this.channelsUrl, { timeout: 10000 }),
-        axios.get(this.streamsUrl, { timeout: 10000 })
+        this.proxyFetch(this.channelsUrl, { signal: AbortSignal.timeout(15000) }).then(r => r.json()),
+        this.proxyFetch(this.streamsUrl, { signal: AbortSignal.timeout(15000) }).then(r => r.json())
       ]);
-      return { channels: channelsRes.data, streams: streamsRes.data };
+      return { channels: channelsRes, streams: streamsRes };
     });
   }
 

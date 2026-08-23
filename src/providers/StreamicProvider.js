@@ -9,7 +9,7 @@ class StreamicProvider extends BaseProvider {
     this.apiUrl = 'https://streamic.st/api/J.php';
     this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async () => {
       const headers = { 'User-Agent': 'Mozilla/5.0' };
-      const res = await fetch(this.apiUrl, { headers, signal: AbortSignal.timeout(7000) });
+      const res = await this.proxyFetch(this.apiUrl, { headers, signal: AbortSignal.timeout(15000) });
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return await res.json();
     });
