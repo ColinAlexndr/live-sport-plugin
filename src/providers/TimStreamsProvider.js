@@ -188,18 +188,21 @@ class TimStreamsProvider extends BaseProvider {
         }
 
         if (m3u8) {
-          const proxyUrl = `/api/hls/playlist.m3u8?url=${encodeURIComponent(m3u8)}&referer=${encodeURIComponent(referer)}`;
-          
           streams.push(new StreamEntity({
-            name: this.name,
-            title: embed.name || matchTitle,
-            url: proxyUrl,
+            name: `TimStreams`,
+            title: `[Direct] ${embed.name || 'TimStreams Stream'}`,
+            url: m3u8,
             behaviorHints: {
               notWebReady: true,
               proxyHeaders: {
-                "request": { "Referer": referer, "Origin": referer, "User-Agent": 'Mozilla/5.0' }
+                request: {
+                  "Referer": `${referer}/`,
+                  "Origin": referer,
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+                }
               }
-            }
+            },
+            resolution: 'HD'
           }));
         }
         
