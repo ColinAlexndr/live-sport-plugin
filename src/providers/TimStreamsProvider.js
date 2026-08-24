@@ -105,7 +105,7 @@ class TimStreamsProvider extends BaseProvider {
    */
   async extractM3u8(embedUrl) {
     try {
-      const res = await fetch(embedUrl, {
+      const res = await this.proxyFetch(embedUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
           'Referer': 'https://timstreams.st/'
@@ -188,9 +188,22 @@ class TimStreamsProvider extends BaseProvider {
         }
 
         if (m3u8) {
+          const proxyStreamUrl = this.getStreamProxyUrl(m3u8, referer, referer);
+
+          // Fast Edge Proxy Stream (CF Worker pool - passes Referer, zero Render bandwidth, works in all Nuvio apps)
+          if (proxyStreamUrl && proxyStreamUrl.startsWith('http')) {
+            streams.push(new StreamEntity({
+              name: `TimStreams`,
+              title: `[HD] ${embed.name || 'Stream'}`,
+              url: proxyStreamUrl,
+              resolution: 'HD'
+            }));
+          }
+
+          // Direct Stream (Native player header fallback)
           streams.push(new StreamEntity({
             name: `TimStreams`,
-            title: `[Direct] ${embed.name || 'TimStreams Stream'}`,
+            title: `[Direct] ${embed.name || 'Stream'}`,
             url: m3u8,
             behaviorHints: {
               notWebReady: true,
